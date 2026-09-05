@@ -343,6 +343,42 @@ def full_train() -> dict:
     return payload
 
 
+def build_derived_artifacts() -> dict:
+    """Produce the SHAP global summary and the derived rules.
+
+    Split out from training so it can be re-run against an existing model
+    without paying for cross-validation again. full_train calls it at the end;
+    `--artifacts` runs it on its own.
+    """
+    from src.ml.explain import (
+        compute_global_importance,
+        save_global_importance,
+    )
+    from src.ml.rules import derive_rules, save_rules
+
+    features, target = load_training_data()
+
+    with timed("global SHAP importance"):
+        importance = compute_global_importance(features)
+    save_global_importance(importance)
+
+    top_features = [row["feature"] for row in importance["features"]]
+    with timed("derive rules"):
+        rules = derive_rules(features, target, top_features)
+    save_rules(rules)
+
+    for rule in rules["rules"][:3]:
+        log.info(
+            "%s  lift %.2f  support %.1f%%  default rate %.1f%%  %s",
+            rule["rule_id"],
+            rule["lift"],
+            rule["support_pct"],
+            100 * rule["default_rate"],
+            rule["readable"],
+        )
+    return {"global_importance": importance, "rules": rules}
+
+
 def _write_metrics(payload: dict) -> None:
     path = models_dir() / METRICS_FILE
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -356,12 +392,20 @@ def main() -> None:
         action="store_true",
         help="single split, LightGBM only, for fast iteration",
     )
+    parser.add_argument(
+        "--artifacts",
+        action="store_true",
+        help="rebuild SHAP global importance and rules from the saved model",
+    )
     args = parser.parse_args()
 
-    if args.quick:
+    if args.artifacts:
+        build_derived_artifacts()
+    elif args.quick:
         quick_train()
     else:
         full_train()
+        build_derived_artifacts()
 
 
 if __name__ == "__main__":
