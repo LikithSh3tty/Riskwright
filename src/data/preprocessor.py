@@ -44,6 +44,31 @@ DAYS_PER_YEAR = 365.25
 # being chased on AUC here that the duplicate would buy.
 REDUNDANT_AFTER_DERIVATION = ("days_birth",)
 
+
+# Attributes that are protected bases in credit decisions. ECOA names sex,
+# marital status, and age explicitly; the Equal Credit Opportunity framework
+# and Indian fair-lending expectations treat them the same way. Using them to
+# price or refuse credit is a compliance failure, not a modelling tradeoff, so
+# they are excluded from the feature matrix by default rather than left in with
+# a caveat attached.
+#
+#   code_gender          sex
+#   name_family_status   marital status
+#   age_years            age (days_birth is already dropped as redundant)
+#   cnt_children         familial status, a direct proxy for the above
+#   cnt_fam_members      familial status, same
+#
+# Residual proxies that are NOT excluded, and why, are documented in the
+# README's fair lending section. Excluding a protected attribute does not by
+# itself make a model fair; it removes the most obvious defect.
+PROTECTED_ATTRIBUTES: tuple[str, ...] = (
+    "code_gender",
+    "name_family_status",
+    "age_years",
+    "cnt_children",
+    "cnt_fam_members",
+)
+
 # Written at training time, read at inference time. Guards against column-order
 # drift and against a category the serving path has never seen.
 FEATURE_SPEC_FILE = "feature_spec.json"
@@ -117,6 +142,7 @@ def _categorical_columns(df: pd.DataFrame) -> list[str]:
 def prepare_features(
     df: pd.DataFrame,
     feature_spec: dict | None = None,
+    exclude_protected: bool = True,
 ) -> pd.DataFrame:
     """Turn raw rows into the model's feature matrix.
 
@@ -127,6 +153,8 @@ def prepare_features(
     """
     frame = add_derived_features(clean(df))
     discard = (TARGET, ID_COLUMN, *REDUNDANT_AFTER_DERIVATION)
+    if exclude_protected:
+        discard = (*discard, *PROTECTED_ATTRIBUTES)
     frame = frame.drop(columns=[c for c in discard if c in frame.columns])
 
     if feature_spec is None:
@@ -175,6 +203,7 @@ def build_feature_spec(features: pd.DataFrame) -> dict:
             for column in categorical
         },
         "days_employed_sentinel": DAYS_EMPLOYED_SENTINEL,
+        "protected_attributes_excluded": list(PROTECTED_ATTRIBUTES),
     }
 
 

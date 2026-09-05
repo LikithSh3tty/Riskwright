@@ -74,14 +74,20 @@ LIGHTGBM_PARAMS = dict(
 # Data
 # --------------------------------------------------------------------------
 
-def load_training_data() -> tuple[pd.DataFrame, pd.Series]:
+def load_training_data(
+    exclude_protected: bool = True,
+) -> tuple[pd.DataFrame, pd.Series]:
     with timed("read application_train from postgres"):
         frame = read_application_table()
     log.info("read %s rows, %d columns", human_count(len(frame)), frame.shape[1])
 
     target = frame[TARGET].astype(int)
-    features = prepare_features(frame)
-    log.info("prepared %d features", features.shape[1])
+    features = prepare_features(frame, exclude_protected=exclude_protected)
+    log.info(
+        "prepared %d features (protected attributes %s)",
+        features.shape[1],
+        "excluded" if exclude_protected else "INCLUDED",
+    )
     return features, target
 
 
@@ -354,6 +360,57 @@ def full_train() -> dict:
     return payload
 
 
+def fairness_cost() -> dict:
+    """Measure what excluding the protected attributes costs.
+
+    Same split, same hyperparameters, same seed. The only difference is whether
+    sex, marital status, age, and the familial-status proxies are in the
+    feature matrix. Running it makes the compliance decision a measured
+    tradeoff rather than an assertion that it was probably cheap.
+    """
+    from src.ml.evaluate import score_predictions
+
+    results = {}
+    for label, exclude in (("with_protected", False), ("without_protected", True)):
+        features, target = load_training_data(exclude_protected=exclude)
+        x_train, x_valid, y_train, y_valid = train_test_split(
+            features, target, test_size=0.2, stratify=target,
+            random_state=RANDOM_STATE,
+        )
+        weight = compute_scale_pos_weight(y_train)
+        model = build_lightgbm(weight)
+        with timed(f"fit lightgbm ({label})"):
+            model.fit(x_train, y_train)
+        metrics = score_predictions(y_valid, model.predict_proba(x_valid)[:, 1])
+        metrics["features"] = int(features.shape[1])
+        results[label] = metrics
+        log.info(
+            "%-18s %d features  ROC-AUC %.4f  PR-AUC %.4f",
+            label, features.shape[1], metrics["roc_auc"], metrics["pr_auc"],
+        )
+
+    delta_roc = results["with_protected"]["roc_auc"] - results["without_protected"]["roc_auc"]
+    delta_pr = results["with_protected"]["pr_auc"] - results["without_protected"]["pr_auc"]
+    results["cost_of_exclusion"] = {
+        "roc_auc": round(delta_roc, 5),
+        "pr_auc": round(delta_pr, 5),
+        "note": (
+            "Positive means excluding the protected attributes reduced "
+            "performance by that much. Measured on one stratified holdout "
+            "split, identical seed and hyperparameters."
+        ),
+    }
+    log.info(
+        "cost of excluding protected attributes: ROC-AUC %+.4f, PR-AUC %+.4f",
+        -delta_roc, -delta_pr,
+    )
+
+    path = models_dir() / "fairness_comparison.json"
+    path.write_text(json.dumps(results, indent=2), encoding="utf-8")
+    log.info("wrote %s", path)
+    return results
+
+
 def build_derived_artifacts() -> dict:
     """Produce the SHAP global summary and the derived rules.
 
@@ -443,13 +500,20 @@ def main() -> None:
         help="single split, LightGBM only, for fast iteration",
     )
     parser.add_argument(
+        "--fairness",
+        action="store_true",
+        help="measure what excluding the protected attributes costs",
+    )
+    parser.add_argument(
         "--artifacts",
         action="store_true",
         help="rebuild SHAP global importance and rules from the saved model",
     )
     args = parser.parse_args()
 
-    if args.artifacts:
+    if args.fairness:
+        fairness_cost()
+    elif args.artifacts:
         build_derived_artifacts()
     elif args.quick:
         quick_train()
