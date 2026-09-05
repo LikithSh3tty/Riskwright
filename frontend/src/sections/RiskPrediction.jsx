@@ -91,7 +91,9 @@ function ExistingApplicant({ onScored }) {
                   ))}
                 </select>
                 <span className="field-hint">
-                  First {data.count} rows of application_train, as the API exposes them.
+                  {data.count} applicants, as /applicants returns them. The endpoint applies no
+                  ORDER BY, so this is a stable but arbitrary window rather than the first rows
+                  or a held-out sample.
                 </span>
               </div>
 

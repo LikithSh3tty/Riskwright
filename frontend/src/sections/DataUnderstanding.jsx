@@ -35,7 +35,7 @@ function InsightEvidence({ evidence }) {
   const labelKey = Object.keys(rows[0]).find((k) => k !== "default_rate" && k !== "count");
 
   return (
-    <div style={{ height: 210, marginTop: 16 }}>
+    <div className="chart-scroll" style={{ height: 210, marginTop: 16 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
           <CartesianGrid stroke={GRID} vertical={false} />
@@ -76,7 +76,7 @@ function Distribution({ columns }) {
       <Resource state={dist} skeleton={<Skeleton height={340} />}>
         {(data) => (
           <>
-            <div style={{ height: 340 }}>
+            <div className="chart-scroll" style={{ height: 340 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={data.bins} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
                   <CartesianGrid stroke={GRID} vertical={false} />
@@ -123,7 +123,7 @@ function ByCategory({ dimensions }) {
       <Resource state={grouped} skeleton={<Skeleton height={300} />}>
         {(data) => (
           <>
-            <div style={{ height: 300 }}>
+            <div className="chart-scroll" style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.groups} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
                   <CartesianGrid stroke={GRID} vertical={false} />

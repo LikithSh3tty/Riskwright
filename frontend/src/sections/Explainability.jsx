@@ -38,7 +38,7 @@ function Contributions({ rows, baseValue }) {
   const height = Math.max(320, data.length * 30 + 60);
 
   return (
-    <div style={{ height }}>
+    <div className="chart-scroll" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 4, right: 60, bottom: 24, left: 8 }}>
           <CartesianGrid stroke="#e2ded6" horizontal={false} />
@@ -72,7 +72,7 @@ function GlobalImportance() {
         const rows = data.features.slice(0, 14).reverse();
         return (
           <>
-            <div style={{ height: Math.max(320, rows.length * 26 + 40) }}>
+            <div className="chart-scroll" style={{ height: Math.max(320, rows.length * 26 + 40) }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 20, bottom: 4, left: 8 }}>
                   <CartesianGrid stroke="#e2ded6" horizontal={false} />
