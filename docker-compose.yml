@@ -1,0 +1,105 @@
+# Riskwright stack: postgres -> loader -> api -> ui
+#
+# The dependency conditions are load-bearing, not decoration. A race where the
+# API starts before Postgres accepts connections is the single most common
+# reason a submission like this fails on someone else's machine.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: riskwright-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-riskwright}
+      POSTGRES_USER: ${POSTGRES_USER:-riskwright}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      # pg_isready, not a sleep. The loader waits on this passing.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-riskwright} -d ${POSTGRES_DB:-riskwright}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  loader:
+    build: .
+    container_name: riskwright-loader
+    command: ["python", "-m", "src.data.loader"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-riskwright}
+      POSTGRES_USER: ${POSTGRES_USER:-riskwright}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_RO_USER: ${POSTGRES_RO_USER:-riskwright_ro}
+      POSTGRES_RO_PASSWORD: ${POSTGRES_RO_PASSWORD:-change_me_too}
+      DATA_DIR: /data
+      FORCE_RELOAD: ${FORCE_RELOAD:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      # Host dataset, read-only. Keep DATA_DIR outside any cloud-synced folder.
+      - ${DATA_DIR:?set DATA_DIR in .env to the folder holding the extracted CSVs}:/data:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # One-shot. It exits 0 and the API waits for that exit, not for a port.
+    restart: "no"
+
+  api:
+    build: .
+    container_name: riskwright-api
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-riskwright}
+      POSTGRES_USER: ${POSTGRES_USER:-riskwright}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_RO_USER: ${POSTGRES_RO_USER:-riskwright_ro}
+      POSTGRES_RO_PASSWORD: ${POSTGRES_RO_PASSWORD:-change_me_too}
+      # The LLM key belongs to this service alone and never reaches the UI.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      loader:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  ui:
+    build: .
+    container_name: riskwright-ui
+    command:
+      - streamlit
+      - run
+      - ui/app.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+      - --server.headless=true
+    environment:
+      # The UI knows one thing about the backend: its URL.
+      API_URL: http://api:8000
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
