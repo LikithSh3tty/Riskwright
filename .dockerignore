@@ -1,0 +1,24 @@
+# Keep the build context small. Without this the 721MB dataset zip and the
+# local virtualenv are uploaded to the daemon on every build.
+.git/
+.venv/
+venv/
+data/
+docs/
+notebooks/
+tests/
+*.zip
+*.pdf
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+.env
+.env.local
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

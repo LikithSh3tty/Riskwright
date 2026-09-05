@@ -1,0 +1,38 @@
+# Runtime dependencies. Exact pins on purpose: the model is trained locally and
+# served in a container, and an unpinned scikit-learn or LightGBM between those
+# two environments silently changes predictions.
+#
+# Development-only tools (pytest, Jupyter) live in requirements-dev.txt so they
+# stay out of the image.
+
+# API
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+pydantic==2.13.5
+pydantic-settings==2.15.0
+python-dotenv==1.2.3
+
+# Database
+psycopg2-binary==2.9.12
+
+# Data and modelling
+pandas==3.0.5
+numpy==2.4.6
+scikit-learn==1.9.0
+lightgbm==4.7.0
+shap==0.51.0
+joblib==1.6.0
+
+# SQL parsing for the chatbot validation gate
+sqlglot==30.18.0
+
+# LLM
+anthropic==1.4.0
+
+# UI
+streamlit==1.63.0
+plotly==7.0.0
+requests==2.34.2
+
+# Chatbot evaluation set is YAML
+PyYAML==6.0.3

@@ -1,0 +1,9 @@
+# Development and evaluation only. Not installed into the image.
+-r requirements.txt
+
+pytest==9.1.1
+httpx==0.28.1
+
+# Notebook authoring and the ipynb -> py export the assignment asks for
+jupyter==1.1.1
+nbconvert==7.17.1
