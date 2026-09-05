@@ -63,7 +63,7 @@ services:
       POSTGRES_RO_PASSWORD: ${POSTGRES_RO_PASSWORD:-change_me_too}
       # The LLM key belongs to this service alone and never reaches the UI.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:
       - "8000:8000"

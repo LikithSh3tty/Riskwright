@@ -52,7 +52,7 @@ class Settings(BaseSettings):
 
     # LLM
     anthropic_api_key: str = ""
-    anthropic_model: str = "claude-haiku-4-5-20251001"
+    anthropic_model: str = "claude-haiku-4-5"
 
     # Services
     api_host: str = "0.0.0.0"
