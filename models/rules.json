@@ -8,14 +8,14 @@
     "credit_term",
     "ext_source_1",
     "amt_goods_price",
+    "days_employed",
     "own_car_age"
   ],
   "features_excluded": [
-    "organization_type",
-    "code_gender"
+    "organization_type"
   ],
   "excluded_by_request": [],
-  "surrogate_fidelity": 0.7960430683780417,
+  "surrogate_fidelity": 0.7982283560588076,
   "fidelity_note": "Share of applicants where the surrogate tree and the LightGBM model reach the same decision at the cost-optimal threshold.",
   "accuracy_vs_outcome": 0.6734393241217387,
   "note": "These rules summarise the behaviour of the LightGBM model using a depth-3 surrogate tree. They are a readable approximation for credit policy, not the model itself.",

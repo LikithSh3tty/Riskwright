@@ -1,0 +1,21 @@
+{
+  "with_protected": {
+    "roc_auc": 0.7651344511869621,
+    "pr_auc": 0.24906248999345668,
+    "positive_rate": 0.08072776937710356,
+    "n": 61503,
+    "features": 125
+  },
+  "without_protected": {
+    "roc_auc": 0.7613903144645082,
+    "pr_auc": 0.24266717827613474,
+    "positive_rate": 0.08072776937710356,
+    "n": 61503,
+    "features": 120
+  },
+  "cost_of_exclusion": {
+    "roc_auc": 0.00374,
+    "pr_auc": 0.0064,
+    "note": "Positive means excluding the protected attributes reduced performance by that much. Measured on one stratified holdout split, identical seed and hyperparameters."
+  }
+}

@@ -255,7 +255,8 @@ The Anthropic API key is scoped to the `api` service only. It never reaches the 
 
 ## Model
 
-Trained on 307,511 rows and 126 features from `application_train`.
+Trained on 307,511 rows and 120 features from `application_train`, with protected
+attributes excluded (see **Fair lending** below).
 
 ### Model selection
 
@@ -263,15 +264,15 @@ Two models, identical inputs, reported side by side. Five-fold stratified cross-
 
 | Model | ROC-AUC | PR-AUC |
 |-------|---------|--------|
-| LightGBM | **0.7653** +/- 0.0020 | **0.2485** +/- 0.0038 |
-| Logistic regression | 0.7464 +/- 0.0027 | 0.2202 +/- 0.0035 |
+| LightGBM | **0.7614** +/- 0.0026 | **0.2441** +/- 0.0008 |
+| Logistic regression | 0.7438 +/- 0.0026 | 0.2181 +/- 0.0031 |
 
-LightGBM wins, but by less than a headline would suggest: 0.019 ROC-AUC and 0.028 PR-AUC. The
+LightGBM wins, but by less than a headline would suggest: 0.018 ROC-AUC and 0.026 PR-AUC. The
 gap is real rather than noise, being several times the fold standard deviation, and it is
-worth stating plainly that a logistic regression gets within 2.5% of a gradient-boosted
+worth stating plainly that a logistic regression gets within 2.4% of a gradient-boosted
 ensemble on this data. Logistic regression is also what banks deploy under regulatory
 pressure, because a coefficient per feature is auditable in a way an ensemble is not. If the
-audit burden mattered more than 0.019 AUC, the baseline would be the defensible production
+audit burden mattered more than 0.018 AUC, the baseline would be the defensible production
 choice. That is a finding, not a disappointment.
 
 LightGBM is served because two other requirements point the same way: SHAP's `TreeExplainer`
@@ -326,19 +327,19 @@ The threshold minimising `10 * FN + 1 * FP` is selected by sweeping out-of-fold 
 
 | Threshold | Flagged | Recall | Precision | Expected cost |
 |-----------|---------|--------|-----------|---------------|
-| Naive 0.5 | 0.0% | 0.003 | 0.562 | 247,623 |
-| Cost-optimal 0.0751 | 32.0% | 0.687 | 0.173 | **159,261** |
+| Naive 0.5 | 0.0% | 0.002 | 0.545 | 247,681 |
+| Cost-optimal 0.0837 | 28.9% | 0.644 | 0.180 | **161,314** |
 
-Choosing by cost rather than by convention cuts expected cost by **35.7%**. On a calibrated
+Choosing by cost rather than by convention cuts expected cost by **34.9%**. On a calibrated
 probability scale 0.5 is not a neutral default, it is an absurd one: it approves essentially
-everybody and catches 3 defaulters in every 1,000.
+everybody and catches 2 defaulters in every 1,000.
 
 The two band boundaries answer different questions and are set differently:
 
 | Boundary | Value | How it is set |
 |----------|-------|---------------|
-| `t_high` Medium/High | 0.0751 | **Cost-optimal.** Above it the expected cost of approving exceeds the expected cost of refusing. Derived from the cost assumption. |
-| `t_low` Low/Medium | 0.0334 | **A business judgment, not an optimum.** Set so the safest 40% of applicants are auto-approved without review. Where automatic approval should stop depends on review capacity and risk appetite, and nothing in the data answers that. |
+| `t_high` Medium/High | 0.0837 | **Cost-optimal.** Above it the expected cost of approving exceeds the expected cost of refusing. Derived from the cost assumption. |
+| `t_low` Low/Medium | 0.0341 | **A business judgment, not an optimum.** Set so the safest 40% of applicants are auto-approved without review. Where automatic approval should stop depends on review capacity and risk appetite, and nothing in the data answers that. |
 
 Only `t_high` is derived. `t_low` is a policy dial, and it is exposed as one in
 `models/threshold.json` rather than presented as a computed result.
@@ -347,11 +348,11 @@ Confusion matrix at `t_high`, out of fold across all 307,511 rows:
 
 |  | Predicted approve | Predicted refuse |
 |--|-------------------|------------------|
-| **Did not default** | 201,235 | 81,451 |
-| **Defaulted** | 7,781 | 17,044 |
+| **Did not default** | 209,832 | 72,854 |
+| **Defaulted** | 8,846 | 15,979 |
 
-Precision of 0.173 is low in isolation, and deliberately so. Under a 10:1 cost ratio, catching
-69% of defaulters is worth refusing a large number of applicants who would have repaid. That
+Precision of 0.180 is low in isolation, and deliberately so. Under a 10:1 cost ratio, catching
+64% of defaulters is worth refusing a large number of applicants who would have repaid. That
 is the cost assumption doing its job, not the model failing.
 
 ### Reproducing
@@ -499,7 +500,7 @@ importance, but it does mean the rules say little about applicant-supplied field
 rule set fitted with the external scores excluded would be more useful as fallback policy for
 applicants without bureau coverage, and is listed under improvements.
 
-Surrogate fidelity against the model is 0.673. The rules are a readable approximation of the
+Surrogate fidelity against the model is 0.798 for the faithful set and 0.714 for the policy set. The rules are a readable approximation of the
 model's behaviour, not the model itself.
 
 ## Talk-to-data
@@ -765,7 +766,7 @@ trust this.
 
 **Rules**
 
-- The faithful rule set agrees with the model on 79.6% of applicants, the policy set on 70.9%.
+- The faithful rule set agrees with the model on 79.8% of applicants, the policy set on 71.4%.
   Neither is the model, and the gap is where a rule-based decision would differ from a scored
   one.
 - The faithful set keys almost entirely off external bureau scores, so it says little a credit
