@@ -12,8 +12,11 @@ claim into a measurement.
   v3  Structured action output. Refusal and clarification become first-class
       results rather than parse failures, semantic notes are added, and prior
       turns are replayed as question plus SQL only.
+  v4  Join discipline, written in response to the two failures the harness
+      found in v3.
 
-v3 is what the application uses. The others exist to be measured against.
+v4 is what the application uses. Earlier versions are frozen at the numbers the
+evaluation measured for them, and exist to be compared against.
 """
 
 from __future__ import annotations
@@ -203,9 +206,49 @@ def _v3() -> PromptVersion:
     )
 
 
-_BUILDERS = {"v1": _v1, "v2": _v2, "v3": _v3}
+# --------------------------------------------------------------------------
+# v4: join discipline
+#
+# Added after running the evaluation on v3. Both v3 failures were join errors
+# on the many-to-one tables: one spurious GROUP BY that returned a row per
+# applicant instead of an overall rate, and one DISTINCT-over-join that placed
+# applicants holding both an active and a closed bureau credit into both sides
+# of an "with versus without" comparison.
+#
+# This is the only change. Versions v1 to v3 are frozen at the numbers the
+# harness measured for them.
+# --------------------------------------------------------------------------
 
-CURRENT_VERSION = "v3"
+_V4_RULES = _V3_RULES + """
+
+Joining to bureau or previous_application:
+- Those tables hold MANY rows per applicant. A plain JOIN multiplies applicants
+  and silently skews any average.
+- For "applicants who have X", use WHERE EXISTS (SELECT 1 FROM bureau b WHERE
+  b.sk_id_curr = a.sk_id_curr AND ...). Do not JOIN and then average.
+- For "applicants with X versus without", put the EXISTS in a CASE inside a
+  subquery selecting one row per applicant, never a DISTINCT over a join.
+- Do not add GROUP BY unless the question asks for a breakdown. A question
+  asking for one overall number must return exactly one row."""
+
+
+def _v4() -> PromptVersion:
+    return PromptVersion(
+        name="v4",
+        system="\n\n".join([_V4_RULES, build_schema_context(), _FEW_SHOT]),
+        use_tool=True,
+        changed=(
+            "Added explicit join discipline for the many-to-one tables: use "
+            "EXISTS rather than JOIN-then-average, and do not add GROUP BY "
+            "unless a breakdown was asked for. Targets the two join failures "
+            "the evaluation found in v3."
+        ),
+    )
+
+
+_BUILDERS = {"v1": _v1, "v2": _v2, "v3": _v3, "v4": _v4}
+
+CURRENT_VERSION = "v4"
 
 
 def get_prompt(version: str = CURRENT_VERSION) -> PromptVersion:
