@@ -8,6 +8,7 @@ beyond DATA_DIR and the Anthropic key.
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -27,9 +28,24 @@ MAX_QUERY_ROWS = 200
 QUERY_TIMEOUT_SECONDS = 10
 
 
+def _env_file() -> Path:
+    """Absolute path to .env, resolved from this file rather than the cwd.
+
+    A relative ".env" is resolved against the working directory, so running
+    anything from a subdirectory (a notebook, a script) silently picks up the
+    default passwords instead of the real ones and fails to authenticate. The
+    repository root is found by walking up from here.
+    """
+    here = Path(__file__).resolve()
+    for candidate in here.parents:
+        if (candidate / "requirements.txt").exists():
+            return candidate / ".env"
+    return here.parents[2] / ".env"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_env_file(),
         env_file_encoding="utf-8",
         extra="ignore",
     )
