@@ -6,7 +6,7 @@ and lets a non-technical user query the data in plain English.
 
 Built for the NeoStats AI Engineer assignment.
 
-> **Status:** in progress. Sections marked *pending* land as each module is built.
+> **Status:** all six modules complete and verified against a running stack.
 
 ---
 
@@ -14,12 +14,12 @@ Built for the NeoStats AI Engineer assignment.
 
 | Module | Status |
 |--------|--------|
-| Data understanding and EDA | pending |
+| Data understanding and EDA | done |
 | Talk-to-data (natural language to SQL) | done |
 | Machine learning layer (default probability, risk band) | done |
 | Explainable AI (SHAP per prediction) | done |
 | Business-readable decision rules | done |
-| Multi-section user interface | pending |
+| Multi-section user interface | done |
 | Dockerized deployment | done |
 
 ## Data loaded
@@ -604,9 +604,111 @@ Both were the same root cause:
 Both are many-to-one join fan-out, which the schema notes already warned about in prose. v4
 replaced the warning with a specific instruction to use `EXISTS`, and both now pass.
 
+## Exploratory analysis
+
+`notebooks/eda.ipynb` and its `notebooks/eda.py` export cover the dataset summary, data
+quality, feature categorization, five business insights, and supporting charts. Both import
+from `src/data/eda.py`, the same module the API serves from, so the notebook, the UI, and this
+README cannot quote different numbers for the same finding.
+
+Five findings, each computed rather than asserted:
+
+1. **A sentinel value hides in the employment column.** 18.0% of applicants have
+   `days_employed` set to 365243, roughly 1,000 years, encoding "not currently employed"
+   rather than a duration. Left untreated it corrupts every statistic built on the column.
+   Those applicants default at 5.4% against 8.7% for everyone else, so the fact is kept as a
+   flag rather than thrown away with the value.
+2. **External credit scores separate risk more than anything the applicant reports.** The
+   lowest quartile of `ext_source_3` defaults at 15.1% against 3.5% in the highest, a 4.3x
+   spread from one column.
+3. **Education tracks default strongly.** Lower secondary 10.9%, Academic degree 1.8%.
+4. **Borrowing heavily relative to income does not predict default, which is not what you
+   would expect.** Default rate peaks in the 2x to 4x band at 8.77% and is *lowest* among the
+   most leveraged borrowers, 7.23% above 6x, below the 7.48% seen under 2x. This looks like a
+   selection effect: a loan worth six times income is presumably only written for applicants
+   who cleared other checks. The engineered `credit_income_ratio` ranks 37th of 126 by SHAP
+   importance, consistent with a weak signal, while loan term ranks 3rd. A credit policy built
+   on a leverage cap would be targeting the wrong quantity.
+5. **Younger applicants default substantially more often.** 11.4% under 30, falling to 4.9%
+   at 60 and over.
+
+Insight 4 is the one worth pausing on. It is a negative result that contradicts the obvious
+hypothesis, and it is reported because it changes what a policy built on this data should do.
+
+## User interface
+
+Streamlit, five sections, each a pure client of the API. No business logic, no database access
+and no model loading in the UI layer: every value on screen arrived over HTTP. That is what
+would make replacing this frontend a swap of one compose service rather than a rewrite.
+
+| Section | Contents |
+|---------|----------|
+| Data understanding | Dataset metrics, missing values, the five insights with charts, a distribution explorer, and default rate by category |
+| Risk prediction | Score an existing applicant or a what-if applicant; probability, band, and recommended action |
+| Why this decision | Diverging SHAP contribution chart plus the plain-English narrative, and global importance |
+| Derived rules | Both rule sets with support, default rate, and lift |
+| Ask the data | Chat with generated SQL shown in an expander, results as a table, refusals rendered distinctly |
+
+Charts are Plotly, never `st.pyplot`, because a server-rendered figure would put presentation
+logic behind the API. Aggregation happens server-side; raw rows never reach the browser.
+
 ## Known limitations
 
-*Pending.*
+Specific rather than vague, because the vague version is useless to anyone deciding whether to
+trust this.
+
+**Model**
+
+- Trained on `application_train` only. `bureau` and `previous_application` are loaded for the
+  chatbot but contribute no features. Published solutions gain roughly 0.02 to 0.03 ROC-AUC
+  from prior credit history; that is the largest single improvement available.
+- No hyperparameter search. Deliberate, but it means the reported 0.7653 is a floor.
+- **`code_gender` appears among the SHAP contributions**, and both age and education separate
+  risk strongly. All three are legally sensitive in credit decisions in many jurisdictions.
+  Nothing here performs fair-lending testing, disparate-impact analysis, or reject inference.
+  This is a technical demonstration and would not be deployable without that work.
+- The 10:1 cost ratio is an assumption, not a measurement. Every threshold and band moves if a
+  real recovery model replaces it.
+
+**Explainability**
+
+- Global SHAP importance is sampled at 2,000 rows, not exhaustive.
+- SHAP values are in log-odds on the model's weighted scale. The probability is calibrated;
+  the contributions describe direction and relative size, not percentage points.
+- The narrative is template-generated. It is reliable and cheap, and it will not phrase an
+  unusual combination of drivers as fluently as a model would.
+
+**Rules**
+
+- The faithful rule set agrees with the model on 79.6% of applicants, the policy set on 70.9%.
+  Neither is the model, and the gap is where a rule-based decision would differ from a scored
+  one.
+- The faithful set keys almost entirely off external bureau scores, so it says little a credit
+  officer can act on. That is what the policy set exists for.
+
+**Chatbot**
+
+- **Refusal is probabilistic, not guaranteed.** The schema validator makes querying a
+  non-existent column impossible, which is a hard guarantee. Declining a question that is
+  semantically unanswerable from columns that *do* exist is a model judgement, and held-out
+  question H8 was refused in one run and answered wrongly in another.
+- Held-out accuracy is 7/8 against 100% on the development set. The development set was used
+  for tuning and its score is not a generalisation estimate.
+- Eight held-out questions is a small sample. A wider set with a proper train and test split
+  is the honest next step.
+- Conversation memory is in-process: it does not survive an API restart and does not scale
+  beyond one container. Redis is the obvious next step and is not warranted at this size.
+- Prompt caching does not engage, because the prompt is smaller than Haiku 4.5's 4,096 token
+  minimum. Measured, not assumed, and a deliberate trade against prompt compactness.
+- Only three tables are exposed. Questions needing the other four are refused correctly but
+  are refused nonetheless.
+
+**Engineering**
+
+- Model artifacts are committed to git. This contradicts a common convention but follows the
+  assignment, which lists saved model artifacts as a repository deliverable, and it means a
+  fresh clone can serve predictions without training first.
+- No authentication on the API. Appropriate for an assignment, not for anything else.
 
 ---
 
