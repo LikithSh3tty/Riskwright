@@ -15,7 +15,7 @@ Built for the NeoStats AI Engineer assignment.
 | Module | Status |
 |--------|--------|
 | Data understanding and EDA | pending |
-| Talk-to-data (natural language to SQL) | pending |
+| Talk-to-data (natural language to SQL) | done |
 | Machine learning layer (default probability, risk band) | done |
 | Explainable AI (SHAP per prediction) | done |
 | Business-readable decision rules | done |
@@ -419,8 +419,149 @@ model's behaviour, not the model itself.
 
 ## Talk-to-data
 
-*Pending. Covers prompt engineering, token optimization, conversation memory, the SQL
-validation gate, and chatbot evaluation results.*
+Ask a question in English, get a business answer backed by SQL that actually ran.
+
+### Control flow
+
+One model call per question, returning a structured **action** rather than bare SQL:
+
+| Action | Meaning | Cost |
+|--------|---------|------|
+| `sql` | The question maps onto the schema. Query is validated, executed, then summarised. | 2 calls |
+| `refuse` | The data cannot answer it. Names the problem, suggests what it can answer. | 1 call |
+| `clarify` | Answerable in principle, too vague to write one correct query for. | 1 call |
+
+The action is produced through a required tool call with a strict schema, so the response is
+guaranteed to parse. This is the central design decision: **a model with no sanctioned way to
+say "I cannot" will invent a column to fill the silence.** Making refusal a first-class output
+rather than a parse failure is what turns hallucination control from a hope into a mechanism.
+Declining is also the cheap path, which is the right incentive.
+
+### SQL validation gate
+
+Every generated statement passes `src/talk_to_data/query_runner.py` before Postgres sees it:
+
+1. Strip markdown fences.
+2. Parse with `sqlglot`. Unparseable is rejected.
+3. Exactly one statement.
+4. Root node must be a `SELECT`. Writes are detected on the parse tree, not by string
+   matching, so `WHERE occupation_type = 'Delete'` is correctly allowed while a `DELETE`
+   hidden inside a CTE is correctly rejected.
+5. Every table must be one of the three whitelisted.
+6. Every column must exist in live `information_schema`. This is the anti-hallucination
+   backstop: an invented column cannot reach the database.
+7. `LIMIT` forced and clamped to 200.
+8. Executed as `riskwright_ro` in a read-only transaction with a 10 second statement timeout.
+
+Layers 4 through 8 are independent, so a defect in the parser is not by itself an incident.
+The read-only role is verified to reject `INSERT`, `CREATE`, and `DROP`.
+
+When validation fails, the specific error is fed back for exactly **one** repair attempt. A
+second failure becomes a refusal rather than a third API call.
+
+### Prompt engineering
+
+Four versions, all retained in `prompt_templates.py`, all measured against the same 30
+questions:
+
+| Version | What changed |
+|---------|--------------|
+| v1 | Naive baseline. Table names only, "return SQL". |
+| v2 | Curated schema with column descriptions and exact categorical values, five few-shot examples, explicit SQL rules. |
+| v3 | Structured action output, so refusal and clarification become first-class. Semantic notes on negative day offsets, absent calendar dates, and the non-existent `credit_score`. |
+| v4 | Join discipline: use `EXISTS` rather than join-then-average, and no `GROUP BY` unless a breakdown was asked for. |
+
+### Token optimization
+
+The schema block is **1,656 tokens**, not the roughly 6,000 a full dump of all 176 columns
+would cost. Three decisions get it there:
+
+- **Curated columns.** Roughly 60 business-relevant columns out of 176. Fewer tokens, and
+  fewer chances to pick a column that exists but does not mean what was asked.
+- **Real descriptions.** One short definition per column, taken from the dataset's own data
+  dictionary. This is what stops the model reading `days_birth` as a date.
+- **Exact categorical values.** The distinct values of low-cardinality columns are sent
+  inline. Without them the model writes `name_education_type = 'Higher Ed'`, the query runs,
+  and zero rows come back with no error anywhere. This is the highest-value item in the
+  prompt.
+
+Conversation memory replays only the prior question and the SQL that answered it, never the
+result rows. A remembered turn costs about 40 tokens instead of several hundred.
+
+**Prompt caching is wired but does not currently engage, and that is a deliberate trade.**
+The cache breakpoint sits correctly after the stable system block. Haiku 4.5 will not cache a
+prefix below 4,096 tokens, and this prompt is about 3,000. Verified rather than assumed: two
+identical calls at the real size both report zero cache activity, while the same prompt padded
+to 7,393 tokens shows a cache write followed by a cache read. Reaching the threshold would
+mean adding filler, or re-adding the columns that were curated out to reduce wrong-column
+errors, to save roughly seven cents per full evaluation run. Compactness wins at this volume.
+The breakpoint stays because it costs nothing and starts working if the schema ever grows.
+
+### Conversation memory
+
+Server-side, keyed by a `session_id` the client sends, held in-process with a one hour TTL and
+a six turn replay window. Deliberately not in Streamlit session state: if history lived in the
+UI, replacing the frontend would mean reimplementing memory and the API could not answer a
+follow-up on its own.
+
+Refusals are replayed too. Without that, the model re-attempts a question it has already
+correctly refused.
+
+Working example over HTTP:
+
+> **Q:** What is the default rate for applicants with higher education?
+> **A:** The default rate for applicants with higher education is 5.36%.
+>
+> **Q:** And for those with only secondary education?
+> **A:** The default rate for those with only secondary education is 8.94%.
+
+The second question names no table, no column, and no metric.
+
+### Evaluation
+
+The chatbot is scored the way a model is scored, not demoed on five questions that happen to
+work. `tests/chatbot_eval.yaml` holds 30 questions across eight categories, **written against
+the schema before any prompt was tuned**, so the harness measures rather than mirrors.
+
+Each SQL question carries a hand-written **reference query**. The harness executes both the
+generated and the reference query and compares results, so correct SQL written differently
+still passes. Refusal questions are scored on whether the bot declined.
+
+```bash
+python -m tests.run_chatbot_eval --versions v1 v2 v3 v4 --out docs/eval_results.md
+```
+
+| Version | Accuracy | Passed |
+|---------|----------|--------|
+| v1 naive | 53% | 16/30 |
+| v2 compact schema, few-shot | 87% | 26/30 |
+| v3 structured action output | 93% | 28/30 |
+| v4 join discipline | **100%** | 30/30 |
+
+By category, on v4: simple aggregate 5/5, filter plus aggregate 5/5, group-by and ranking 5/5,
+joins 4/4, ambiguous 3/3, non-existent column 3/3, unanswerable 3/3, memory 2/2.
+
+**Read that 100% with two caveats, both of which matter more than the number.**
+
+First, **run-to-run variance is one to two questions.** Across two independent runs v1 scored
+57% then 53%, and v2 scored 83% then 87%. The v3 to v4 gap of two questions is within that
+noise. The only difference far beyond it is v1 to v2, worth ten questions.
+
+Second, **v4 was tuned on the two failures v3 exposed, and there is no held-out set.** Its
+score is optimistic by construction. v1 through v3 were measured against questions written
+blind and are the trustworthy numbers; v4 demonstrates that a measured failure can be fixed,
+not that the system is perfect. A larger question set with a train and test split is the
+honest next step and is listed under improvements.
+
+The two v3 failures are worth recording, because both were the same root cause:
+
+| ID | Question | What went wrong |
+|----|----------|-----------------|
+| Q17 | Default rate for applicants with a prior refused application | Added a spurious `GROUP BY a.sk_id_curr`, returning one row per applicant instead of one overall rate. The model's own answer text gave it away: "ranges from 0.0% to 100.0%". |
+| Q19 | Do applicants with active bureau credits default more often | `SELECT DISTINCT` over a join placed applicants holding both an active and a closed bureau credit into **both** sides of the comparison, contaminating the "without" group. |
+
+Both are many-to-one join fan-out, which the schema notes already warned about in prose. v4
+replaced the warning with a specific instruction to use `EXISTS`, and both now pass.
 
 ## Known limitations
 
