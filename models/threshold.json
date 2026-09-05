@@ -1,0 +1,45 @@
+{
+  "cost_assumption": {
+    "false_negative_cost": 10.0,
+    "false_positive_cost": 1.0,
+    "ratio": 10.0,
+    "note": "A false negative is an approved loan that defaults; a false positive is a creditworthy applicant refused. The ratio is an assumption, not a measurement."
+  },
+  "t_high": 0.080094,
+  "t_high_basis": "cost-optimal: the threshold minimising expected cost under the stated ratio, computed on calibrated probabilities",
+  "t_low": 0.03352000303622649,
+  "t_low_basis": "business judgment: the safest 40% of applicants are auto-approved without review. Not an optimum.",
+  "auto_approve_rate": 0.4,
+  "at_cost_optimal_threshold": {
+    "threshold": 0.080094,
+    "confusion_matrix": {
+      "true_negative": 41208,
+      "false_positive": 15330,
+      "false_negative": 1682,
+      "true_positive": 3283
+    },
+    "precision": 0.17638209853328318,
+    "recall": 0.6612286002014098,
+    "f1": 0.27847993892611755,
+    "expected_cost": 32150.0,
+    "flagged_rate": 0.30263564378973384
+  },
+  "at_naive_half_threshold": {
+    "threshold": 0.5,
+    "confusion_matrix": {
+      "true_negative": 56533,
+      "false_positive": 5,
+      "false_negative": 4950,
+      "true_positive": 15
+    },
+    "precision": 0.75,
+    "recall": 0.0030211480362537764,
+    "f1": 0.006018054162487462,
+    "expected_cost": 49505.0,
+    "flagged_rate": 0.00032518738923304554
+  },
+  "cost_saving_vs_half": 17355.0,
+  "scale_pos_weight": 11.38710976837865,
+  "population_default_rate": 0.08072881945686496,
+  "basis": "single holdout split (quick mode)"
+}
