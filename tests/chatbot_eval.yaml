@@ -1,0 +1,312 @@
+# Chatbot evaluation set.
+#
+# Written against the schema BEFORE any prompt was tuned. That ordering is
+# deliberate: questions written after iterating on a prompt tend to be questions
+# the prompt already handles, which turns the harness into a mirror rather than
+# a measurement. The middle third is deliberately awkward.
+#
+# Scoring:
+#   expect: sql      -> run reference_sql, run the generated SQL, compare the
+#                       numeric answer within tolerance. Correct SQL that is
+#                       written differently still passes.
+#   expect: refuse   -> the model must decline. Answering at all is a failure,
+#                       and answering confidently is the failure mode that
+#                       matters most, because it means an invented column.
+#   expect: clarify  -> the question is genuinely ambiguous; asking back is the
+#                       correct behaviour.
+#
+# tolerance is relative unless the value is a count.
+
+defaults:
+  tolerance: 0.01
+
+questions:
+
+  # ---------------------------------------------------------------------
+  # Simple aggregate (5)
+  # ---------------------------------------------------------------------
+  - id: Q01
+    category: simple_aggregate
+    question: How many loan applications are in the dataset?
+    expect: sql
+    reference_sql: SELECT count(*) FROM application_train
+
+  - id: Q02
+    category: simple_aggregate
+    question: What is the overall default rate?
+    expect: sql
+    reference_sql: SELECT avg(target::float) FROM application_train
+
+  - id: Q03
+    category: simple_aggregate
+    question: What is the average annual income of applicants?
+    expect: sql
+    reference_sql: SELECT avg(amt_income_total) FROM application_train
+
+  - id: Q04
+    category: simple_aggregate
+    question: What is the largest loan amount anyone applied for?
+    expect: sql
+    reference_sql: SELECT max(amt_credit) FROM application_train
+
+  - id: Q05
+    category: simple_aggregate
+    question: How many applicants own a car?
+    expect: sql
+    reference_sql: SELECT count(*) FROM application_train WHERE flag_own_car = 'Y'
+
+  # ---------------------------------------------------------------------
+  # Filter plus aggregate (5)
+  # ---------------------------------------------------------------------
+  - id: Q06
+    category: filter_aggregate
+    question: What is the default rate among applicants who do not own property?
+    expect: sql
+    reference_sql: SELECT avg(target::float) FROM application_train WHERE flag_own_realty = 'N'
+
+  - id: Q07
+    category: filter_aggregate
+    question: How many applicants earn more than 300000 a year?
+    expect: sql
+    reference_sql: SELECT count(*) FROM application_train WHERE amt_income_total > 300000
+
+  - id: Q08
+    category: filter_aggregate
+    question: What is the average loan size for applicants under 30?
+    expect: sql
+    # Age is stored as a negative day offset, so "under 30" means days_birth
+    # greater than -30*365.25. Getting the sign right is the point of this one.
+    reference_sql: SELECT avg(amt_credit) FROM application_train WHERE days_birth > -30 * 365.25
+
+  - id: Q09
+    category: filter_aggregate
+    question: Among applicants with children, what fraction defaulted?
+    expect: sql
+    reference_sql: SELECT avg(target::float) FROM application_train WHERE cnt_children > 0
+
+  - id: Q10
+    category: filter_aggregate
+    question: What is the average income of applicants who defaulted?
+    expect: sql
+    reference_sql: SELECT avg(amt_income_total) FROM application_train WHERE target = 1
+
+  # ---------------------------------------------------------------------
+  # Group by and ranking (5)
+  # ---------------------------------------------------------------------
+  - id: Q11
+    category: groupby_ranking
+    question: Which education level has the highest default rate?
+    expect: sql
+    reference_sql: |
+      SELECT name_education_type
+      FROM application_train
+      GROUP BY name_education_type
+      ORDER BY avg(target::float) DESC
+      LIMIT 1
+    compare: text
+
+  - id: Q12
+    category: groupby_ranking
+    question: Show the default rate broken down by family status.
+    expect: sql
+    reference_sql: |
+      SELECT name_family_status, avg(target::float) AS default_rate
+      FROM application_train
+      GROUP BY name_family_status
+      ORDER BY default_rate DESC
+    compare: rowset
+
+  - id: Q13
+    category: groupby_ranking
+    question: What are the five most common occupations among applicants?
+    expect: sql
+    # occupation_type is null for 96,391 applicants, and a raw GROUP BY puts
+    # that null bucket first. Someone asking for the commonest occupations does
+    # not want "unknown" as the answer, so the reference excludes it and a
+    # model that filters nulls is scored correct rather than wrong.
+    reference_sql: |
+      SELECT occupation_type, count(*) AS n
+      FROM application_train
+      WHERE occupation_type IS NOT NULL
+      GROUP BY occupation_type
+      ORDER BY n DESC
+      LIMIT 5
+    compare: rowset
+
+  - id: Q14
+    category: groupby_ranking
+    question: Which income type has the most applicants?
+    expect: sql
+    reference_sql: |
+      SELECT name_income_type
+      FROM application_train
+      GROUP BY name_income_type
+      ORDER BY count(*) DESC
+      LIMIT 1
+    compare: text
+
+  - id: Q15
+    category: groupby_ranking
+    question: Compare average loan amount between men and women.
+    expect: sql
+    reference_sql: |
+      SELECT code_gender, avg(amt_credit) AS avg_credit
+      FROM application_train
+      WHERE code_gender IN ('M', 'F')
+      GROUP BY code_gender
+    compare: rowset
+
+  # ---------------------------------------------------------------------
+  # Joins across tables (4)
+  # ---------------------------------------------------------------------
+  - id: Q16
+    category: join
+    question: How many applicants have at least one previous application that was refused?
+    expect: sql
+    reference_sql: |
+      SELECT count(DISTINCT a.sk_id_curr)
+      FROM application_train a
+      JOIN previous_application p ON p.sk_id_curr = a.sk_id_curr
+      WHERE p.name_contract_status = 'Refused'
+
+  - id: Q17
+    category: join
+    question: What is the default rate for applicants who have a prior refused application?
+    expect: sql
+    reference_sql: |
+      SELECT avg(a.target::float)
+      FROM application_train a
+      WHERE EXISTS (
+        SELECT 1 FROM previous_application p
+        WHERE p.sk_id_curr = a.sk_id_curr AND p.name_contract_status = 'Refused'
+      )
+
+  - id: Q18
+    category: join
+    question: What is the average total bureau credit debt per applicant?
+    expect: sql
+    reference_sql: |
+      SELECT avg(total_debt) FROM (
+        SELECT sk_id_curr, sum(amt_credit_sum_debt) AS total_debt
+        FROM bureau GROUP BY sk_id_curr
+      ) t
+
+  - id: Q19
+    category: join
+    question: Do applicants with active bureau credits default more often than those without?
+    expect: sql
+    reference_sql: |
+      SELECT has_active, avg(target::float) AS default_rate FROM (
+        SELECT a.sk_id_curr, a.target,
+               EXISTS (SELECT 1 FROM bureau b
+                       WHERE b.sk_id_curr = a.sk_id_curr
+                         AND b.credit_active = 'Active') AS has_active
+        FROM application_train a
+      ) t GROUP BY has_active
+    compare: rowset
+
+  # ---------------------------------------------------------------------
+  # Ambiguous phrasing (3). Asking back is correct.
+  # ---------------------------------------------------------------------
+  - id: Q20
+    category: ambiguous
+    question: Show me the risky customers.
+    expect: clarify
+    why: >
+      "Risky" is undefined. It could mean the model's High band, a high
+      observed default rate, a large loan relative to income, or prior
+      delinquency. Picking one silently is guessing.
+
+  - id: Q21
+    category: ambiguous
+    question: What is the average amount?
+    expect: clarify
+    why: >
+      application_train has amt_credit, amt_income_total, amt_annuity, and
+      amt_goods_price. "Amount" names none of them.
+
+  - id: Q22
+    category: ambiguous
+    question: How do young applicants compare to old ones?
+    expect: clarify
+    why: >
+      No cutoff is given, and "compare" does not say on what measure.
+
+  # ---------------------------------------------------------------------
+  # Non-existent columns (3). Must refuse, not invent.
+  # ---------------------------------------------------------------------
+  - id: Q23
+    category: nonexistent_column
+    question: What is the average credit score of applicants?
+    expect: refuse
+    why: >
+      There is no credit_score column. There are ext_source_1 through 3, which
+      are normalised external scores, and a good refusal should suggest them.
+      Inventing a credit_score column is the archetypal failure here.
+
+  - id: Q24
+    category: nonexistent_column
+    question: How many applicants live in London?
+    expect: refuse
+    why: >
+      No city or country column exists. Geography is only present as
+      region_rating_client and region_population_relative.
+
+  - id: Q25
+    category: nonexistent_column
+    question: What is the average interest rate on approved loans?
+    expect: refuse
+    why: >
+      application_train has no interest rate. previous_application has
+      rate_interest_primary, but it is almost entirely null and is not the
+      current application's rate, so answering from it would mislead.
+
+  # ---------------------------------------------------------------------
+  # Unanswerable from this data (3). Schema-valid but semantically impossible.
+  # ---------------------------------------------------------------------
+  - id: Q26
+    category: unanswerable
+    question: Which applicants are likely to default next year?
+    expect: refuse
+    why: >
+      The database holds an observed outcome, not a forward-looking
+      prediction. The model answers this through /predict; SQL cannot.
+
+  - id: Q27
+    category: unanswerable
+    question: What was the profit margin on these loans?
+    expect: refuse
+    why: >
+      No revenue, cost, or recovery data exists anywhere in the three tables.
+
+  - id: Q28
+    category: unanswerable
+    question: How many applicants defaulted in 2019?
+    expect: refuse
+    why: >
+      There are no absolute dates in the dataset. Every date column is a
+      negative day offset from an unstated application date, so no calendar
+      year can be recovered.
+
+  # ---------------------------------------------------------------------
+  # Conversation memory (2). Only meaningful in sequence.
+  # ---------------------------------------------------------------------
+  - id: Q29
+    category: memory
+    question: What is the default rate for applicants with higher education?
+    expect: sql
+    reference_sql: |
+      SELECT avg(target::float) FROM application_train
+      WHERE name_education_type = 'Higher education'
+
+  - id: Q30
+    category: memory
+    question: And for those with only secondary education?
+    expect: sql
+    follows: Q29
+    why: >
+      Only answerable by carrying "default rate by education level" forward
+      from the previous turn. Tests memory, not SQL.
+    reference_sql: |
+      SELECT avg(target::float) FROM application_train
+      WHERE name_education_type = 'Secondary / secondary special'
