@@ -1,0 +1,157 @@
+/* Riskwright design tokens.
+ *
+ * Use scene: a credit analyst at a desk under office light, reading dense
+ * tables for long stretches, and an evaluator reviewing a submission. Light,
+ * because that is the room, not because light is a category default.
+ *
+ * The world is institutional precision: paper-warm ground, ink text, hairlines
+ * instead of cards, and one reserved accent. The risk bands carry the only
+ * other colour on the page, so they read as meaning rather than decoration.
+ */
+
+:root {
+  /* Ground and ink. Never pure white or pure black; both flatten depth. */
+  --paper: #fbfaf8;
+  --surface: #ffffff;
+  --panel: #f4f2ee;   /* second neutral layer for the rail and toolbars */
+  --sunken: #efece6;
+
+  --ink: #16161a;
+  --ink-2: #45464d;   /* secondary text, 7.4:1 on paper */
+  --ink-3: #6b6c75;   /* tertiary and captions, 4.7:1 on paper */
+
+  --line: #e2ded6;    /* hairline */
+  --line-strong: #cfcac0;
+
+  /* One accent, reserved for interaction and current selection only.
+   * Deliberately an ink-blue so it never competes with the risk semantics. */
+  --accent: #1f4e79;
+  --accent-hover: #17456c;
+  --accent-wash: #eaf0f6;
+  --accent-ring: rgba(31, 78, 121, 0.32);
+
+  /* Risk semantics. Desaturated toward ink so a table of these reads as data,
+   * not as a traffic light. */
+  --low: #2f6b46;
+  --low-wash: #e8f0ea;
+  --medium: #9a6415;
+  --medium-wash: #f6efe2;
+  --high: #a03535;
+  --high-wash: #f7eaea;
+
+  /* Chart roles. Blue carries "repaid", red carries "defaulted", and the same
+   * two colours mean the same two things in every chart on the site. */
+  --series-repaid: #4c78a8;
+  --series-default: #a03535;
+
+  --danger: #a03535;
+
+  /* Type. IBM Plex: institutional, tuned for data, with a real mono sibling
+   * for SQL and figures. Bundled through @fontsource, never a CDN link. */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Fixed rem scale at a 1.15 ratio. Product UI is read at a consistent DPI;
+   * fluid clamp headings shrink in a sidebar and look worse, not better. */
+  --t-display: 1.75rem;
+  --t-h2: 1.3125rem;
+  --t-h3: 1.0625rem;
+  --t-body: 0.9375rem;
+  --t-small: 0.8125rem;
+  --t-micro: 0.75rem;
+
+  /* Spacing, 4px base. */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.5rem;
+  --s6: 2rem;
+  --s7: 3rem;
+  --s8: 4rem;
+
+  /* One radius system: 6px on every surface, 4px on small controls. Mixed
+   * radii inside one product read as two design systems. */
+  --r: 6px;
+  --r-sm: 4px;
+
+  /* Shadows carry an offset and a soft blur, tinted to the paper hue.
+   * A zero-offset halo is decoration, not depth. */
+  --shadow-1: 0 1px 2px rgba(38, 34, 28, 0.06), 0 1px 1px rgba(38, 34, 28, 0.04);
+  --shadow-2: 0 4px 12px rgba(38, 34, 28, 0.08), 0 1px 3px rgba(38, 34, 28, 0.06);
+  --shadow-pop: 0 12px 32px rgba(38, 34, 28, 0.12), 0 2px 8px rgba(38, 34, 28, 0.08);
+
+  --rail-w: 232px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --fast: 160ms;
+  --mid: 220ms;
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--t-body);
+  line-height: 1.55;
+  font-feature-settings: "cv05" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Browser surfaces. These ship with defaults that belong to no design system,
+ * and theming them is the cheapest signal that a page was built rather than
+ * assembled. */
+::selection { background: var(--accent-wash); color: var(--accent); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+  border: 3px solid var(--paper);
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
+
+/* Every figure in this product is compared down a column, so lining tabular
+ * numerals are the default rather than an opt-in. */
+table, .num, .metric-value, td, th { font-variant-numeric: tabular-nums lining-nums; }
+
+h1, h2, h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+  text-wrap: balance;
+}
+h1 { font-size: var(--t-display); letter-spacing: -0.022em; }
+h2 { font-size: var(--t-h2); }
+h3 { font-size: var(--t-h3); }
+p { margin: 0; }
+
+a { color: var(--accent); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+code, pre, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
