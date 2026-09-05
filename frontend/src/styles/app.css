@@ -17,6 +17,10 @@
   gap: var(--s6);
   position: sticky;
   top: 0;
+  /* A grid item stretches to the row height by default, which makes it as tall
+   * as the whole page and leaves position:sticky with nothing to do. Aligning
+   * to the start bounds it to the viewport so the rail actually pins. */
+  align-self: start;
   height: 100dvh;
   overflow-y: auto;
 }
