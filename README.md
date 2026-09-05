@@ -123,16 +123,34 @@ parameterised statements at load time.
 
 ### 1. Get the data
 
-Download and extract the dataset. Only three files are used:
+The dataset is a Kaggle **competition** download, so you must be signed in to Kaggle and have
+accepted the competition rules once on the data page before the download will work. That
+applies to both the browser and the CLI.
+
+The archive is about 720MB and expands to roughly 2.7GB. Only three of its files are used,
+totalling about 740MB:
 
 ```
-application_train.csv
-bureau.csv
-previous_application.csv
+application_train.csv        166MB
+bureau.csv                   170MB
+previous_application.csv     405MB
 ```
 
-Extract them to a folder **outside** any cloud-synced directory such as OneDrive or Dropbox.
-Sync clients hold file locks that break Docker bind mounts.
+Via the browser: open the
+[competition data page](https://www.kaggle.com/competitions/home-credit-default-risk/data),
+accept the rules, download, and extract at least those three files.
+
+Via the Kaggle CLI, if you have `~/.kaggle/kaggle.json` set up:
+
+```bash
+mkdir -p /path/to/home-credit
+kaggle competitions download -c home-credit-default-risk -p /path/to/home-credit
+cd /path/to/home-credit && unzip home-credit-default-risk.zip
+```
+
+**Extract to a folder outside any cloud-synced directory** such as OneDrive, Dropbox, or
+iCloud. Sync clients hold file locks that break Docker bind mounts, and you do not want 2.7GB
+of CSV syncing to the cloud either.
 
 The dataset is never committed to git.
 
@@ -146,10 +164,26 @@ Edit `.env` and set at minimum:
 
 | Variable | Value |
 |----------|-------|
-| `DATA_DIR` | Absolute path to the folder holding the extracted CSVs |
-| `ANTHROPIC_API_KEY` | Your key. Required only for the chatbot. |
+| `DATA_DIR` | **Absolute** path to the folder holding the extracted CSVs |
+| `ANTHROPIC_API_KEY` | Your key. Required only for the chatbot; everything else runs without it. |
 | `POSTGRES_PASSWORD` | Any value |
 | `POSTGRES_RO_PASSWORD` | Any value, different from the above |
+
+`DATA_DIR` examples:
+
+```ini
+# macOS / Linux
+DATA_DIR=/home/you/data/home-credit
+
+# Windows: use forward slashes. Backslashes are not interpreted correctly
+# by Docker Compose in a bind mount path.
+DATA_DIR=C:/data/home-credit
+```
+
+Leave `POSTGRES_HOST=postgres` as it is. That is the service name on the compose network. Only
+change it if you are running outside Docker, which is covered below.
+
+You will need roughly 3GB free for the extracted CSVs and another 2GB for the Postgres volume.
 
 ### 3. Run
 
@@ -169,16 +203,49 @@ The first start loads roughly 740MB into Postgres and takes a few minutes. Subse
 skip the load, because the loader checks for existing rows first. To force a reload, set
 `FORCE_RELOAD=true`.
 
+Docker Desktop, or the Docker daemon, has to be running before you start. The first run pulls
+the Postgres image and builds the project image, which takes a few minutes on top of the load.
+
+You will know it is ready when `http://localhost:8000/health` returns
+`"status": "ok"` with `"database": {"connected": true}`.
+
 ### Running without Docker
+
+Useful for training and for running the test suite. Postgres still has to be reachable, so the
+easiest route is to start just that service with Compose and run everything else on the host.
 
 ```bash
 python -m venv .venv
-.venv/Scripts/activate          # Windows
+source .venv/bin/activate          # macOS / Linux
+.venv/Scripts/activate             # Windows
 pip install -r requirements-dev.txt
 
-python -m src.data.loader       # needs a reachable Postgres
+docker-compose up -d postgres      # Postgres only
+```
+
+**Set `POSTGRES_HOST=localhost` for anything run on the host.** The `.env` default is
+`postgres`, which is the service name inside the compose network and does not resolve from
+outside it. This is the single most common way a host-side command fails.
+
+```bash
+# macOS / Linux
+export POSTGRES_HOST=localhost
+
+# Windows PowerShell
+$env:POSTGRES_HOST = "localhost"
+```
+
+Then, from the repository root:
+
+```bash
+python -m src.data.loader          # load the CSVs, idempotent
+python -m src.ml.train             # 5-fold CV, both models, SHAP, rules
+python -m src.ml.train --quick     # single split, about 60 seconds
+python -m src.ml.train --fairness  # cost of excluding protected attributes
+pytest                             # 46 tests, no database needed
+
 uvicorn app.main:app --reload
-streamlit run ui/app.py
+streamlit run ui/app.py            # needs API_URL=http://localhost:8000
 ```
 
 ---
@@ -246,7 +313,7 @@ The Anthropic API key is scoped to the `api` service only. It never reaches the 
 | Postgres over SQLite | The chatbot generates real SQL against a real engine, and Compose orchestrates something meaningful rather than a single file. |
 | Three tables, not seven | `application_train`, `bureau`, and `previous_application` support genuine join queries. The remaining four add about 1.9GB of load time and answer no question the assignment asks. |
 | Column names lowercased on load | Postgres folds unquoted identifiers to lowercase. Normalising once at load time means generated SQL never needs quoting, which removes an entire class of LLM error. |
-| Streamlit, not React | The evaluation criteria contain no line for frontend polish. The time saved went into the chatbot evaluation harness. |
+| Streamlit, not React | A deliberate scope decision, not an omission. See below. |
 | Claude Haiku 4.5 | Cheap enough to iterate prompts heavily, and strong at SQL over a compact schema. A small model is sufficient when the schema sent to it is small. |
 | Exact version pins | The model is trained locally and served in a container. Unpinned scikit-learn or LightGBM between the two silently changes predictions. |
 | Types inferred over the full CSV, not a sample | Several columns are integral in the first 100k rows and fractional later. A sampled schema would fail the COPY halfway through a 400MB file. |
@@ -362,6 +429,23 @@ python -m src.ml.train              # 5-fold CV, both models, then SHAP and rule
 python -m src.ml.train --quick      # single split, LightGBM only, about 60 seconds
 python -m src.ml.train --artifacts  # rebuild SHAP and rules from the saved model
 ```
+
+### Why Streamlit and not React
+
+This was considered and declined on purpose.
+
+The evaluation criteria contain no line for frontend quality. A React frontend would have
+consumed most of a session on a Vite build, a multi-stage Dockerfile, and an nginx proxy, to
+produce the same five sections consuming the same five endpoints, for zero additional scored
+points and a real chance of ending with a half-working frontend.
+
+That time went into the chatbot evaluation harness, the held-out question set, and the fair
+lending work instead, all of which sit against criteria that are scored.
+
+The architecture does not preclude it. The UI holds no business logic, reads every value over
+HTTP, and keeps conversation state server-side behind a session id. Swapping it is a change to
+one compose service, not a rewrite. That property was designed in from session one; it simply
+was not spent.
 
 ## Fair lending
 
