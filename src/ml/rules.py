@@ -30,11 +30,19 @@ from src.utils.logger import get_logger
 log = get_logger(__name__)
 
 RULES_FILE = "rules.json"
+POLICY_RULES_FILE = "rules_without_external_scores.json"
 
 MAX_DEPTH = 3
 MIN_SAMPLES_LEAF = 1000
 TOP_FEATURES = 8
 RANDOM_STATE = 42
+
+# The three external bureau scores dominate SHAP importance so completely that
+# a faithful surrogate tree splits on nothing else. Those rules are correct but
+# useless as credit policy: they say the bureau already knew. A second set is
+# derived with them excluded, which is what an officer can actually act on and
+# what applies when an applicant has no bureau coverage.
+EXTERNAL_SCORE_PREFIX = "ext_source"
 
 
 def _readable_condition(feature: str, threshold: float, go_left: bool) -> str:
@@ -108,9 +116,14 @@ def derive_rules(
     features: pd.DataFrame,
     target: np.ndarray | pd.Series,
     top_features: list[str],
+    exclude: tuple[str, ...] = (),
 ) -> dict:
     """Fit a shallow surrogate tree and emit readable rules."""
-    selected = [f for f in top_features if f in features.columns][:TOP_FEATURES]
+    candidates = [
+        f for f in top_features
+        if not any(f.startswith(prefix) for prefix in exclude)
+    ]
+    selected = [f for f in candidates if f in features.columns][:TOP_FEATURES]
     log.info("deriving rules over %d features: %s", len(selected), ", ".join(selected))
 
     subset = features[selected].copy()
@@ -180,6 +193,7 @@ def derive_rules(
         "min_samples_leaf": MIN_SAMPLES_LEAF,
         "features_used": numeric,
         "features_excluded": dropped,
+        "excluded_by_request": list(exclude),
         "surrogate_fidelity": float(tree.score(filled, y)),
         "note": (
             "These rules summarise the behaviour of the LightGBM model using a "
@@ -198,14 +212,14 @@ def derive_rules(
     return payload
 
 
-def save_rules(payload: dict) -> None:
-    path = models_dir() / RULES_FILE
+def save_rules(payload: dict, filename: str = RULES_FILE) -> None:
+    path = models_dir() / filename
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     log.info("wrote %s", path)
 
 
-def load_rules() -> dict:
-    path = models_dir() / RULES_FILE
+def load_rules(filename: str = RULES_FILE) -> dict:
+    path = models_dir() / filename
     if not path.exists():
         raise FileNotFoundError(
             f"{path} is missing. Run `python -m src.ml.train` to produce it."

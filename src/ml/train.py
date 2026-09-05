@@ -365,7 +365,12 @@ def build_derived_artifacts() -> dict:
         compute_global_importance,
         save_global_importance,
     )
-    from src.ml.rules import derive_rules, save_rules
+    from src.ml.rules import (
+        EXTERNAL_SCORE_PREFIX,
+        POLICY_RULES_FILE,
+        derive_rules,
+        save_rules,
+    )
 
     features, target = load_training_data()
 
@@ -374,20 +379,37 @@ def build_derived_artifacts() -> dict:
     save_global_importance(importance)
 
     top_features = [row["feature"] for row in importance["features"]]
+
+    def report(title: str, payload: dict) -> None:
+        log.info("%s (fidelity %.3f)", title, payload["surrogate_fidelity"])
+        for rule in payload["rules"][:3]:
+            log.info(
+                "  %s  lift %.2f  support %.1f%%  default rate %.1f%%  %s",
+                rule["rule_id"],
+                rule["lift"],
+                rule["support_pct"],
+                100 * rule["default_rate"],
+                rule["readable"],
+            )
+
+    # Faithful set: whatever the model actually leans on.
     with timed("derive rules"):
         rules = derive_rules(features, target, top_features)
     save_rules(rules)
+    report("rules (faithful)", rules)
 
-    for rule in rules["rules"][:3]:
-        log.info(
-            "%s  lift %.2f  support %.1f%%  default rate %.1f%%  %s",
-            rule["rule_id"],
-            rule["lift"],
-            rule["support_pct"],
-            100 * rule["default_rate"],
-            rule["readable"],
+    # Policy set: the same derivation with the external bureau scores removed.
+    # Less faithful by construction, and more actionable, because a credit
+    # officer cannot do anything with "the bureau score was low" and because
+    # some applicants have no bureau coverage at all.
+    with timed("derive policy rules"):
+        policy = derive_rules(
+            features, target, top_features, exclude=(EXTERNAL_SCORE_PREFIX,)
         )
-    return {"global_importance": importance, "rules": rules}
+    save_rules(policy, POLICY_RULES_FILE)
+    report("rules (external scores excluded)", policy)
+
+    return {"global_importance": importance, "rules": rules, "policy_rules": policy}
 
 
 def _write_metrics(payload: dict) -> None:

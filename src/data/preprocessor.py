@@ -37,6 +37,13 @@ XNA_AS_MISSING = ("code_gender",)
 
 DAYS_PER_YEAR = 365.25
 
+# Dropped after the derived features are built. age_years is a strictly
+# monotonic transform of days_birth, so keeping both gives a tree two ways to
+# express one fact. It splits SHAP importance between them, makes the waterfall
+# harder to read, and produced explanations that said "age and age". Nothing is
+# being chased on AUC here that the duplicate would buy.
+REDUNDANT_AFTER_DERIVATION = ("days_birth",)
+
 # Written at training time, read at inference time. Guards against column-order
 # drift and against a category the serving path has never seen.
 FEATURE_SPEC_FILE = "feature_spec.json"
@@ -119,7 +126,8 @@ def prepare_features(
     columns the model was fitted on.
     """
     frame = add_derived_features(clean(df))
-    frame = frame.drop(columns=[c for c in (TARGET, ID_COLUMN) if c in frame.columns])
+    discard = (TARGET, ID_COLUMN, *REDUNDANT_AFTER_DERIVATION)
+    frame = frame.drop(columns=[c for c in discard if c in frame.columns])
 
     if feature_spec is None:
         categorical = _categorical_columns(frame)
