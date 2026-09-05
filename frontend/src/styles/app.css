@@ -450,3 +450,67 @@ pre.sql {
   .turn { grid-template-columns: minmax(0, 1fr); gap: var(--s2); }
   .turn-who { text-align: left; padding-top: 0; }
 }
+
+/* Range inputs. The browser default ships a blue thumb that belongs to no
+ * design system, and these sit directly beside themed selects and buttons, so
+ * leaving them is the most visible inconsistency on the page. */
+input[type="range"].control {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 0;
+  height: 34px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+input[type="range"].control:focus-visible { box-shadow: none; }
+input[type="range"].control:hover:not(:disabled) { border-color: transparent; }
+
+input[type="range"].control::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong);
+}
+input[type="range"].control::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  margin-top: -5.5px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-1);
+  transition: transform var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+input[type="range"].control:hover::-webkit-slider-thumb { transform: scale(1.12); }
+input[type="range"].control:active::-webkit-slider-thumb { transform: scale(0.96); }
+input[type="range"].control:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+input[type="range"].control::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong);
+}
+input[type="range"].control::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-1);
+}
+input[type="range"].control:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+/* Number inputs: the spinner arrows are browser chrome nobody asked for, and
+ * these fields are adjusted by typing. */
+input[type="number"].control::-webkit-outer-spin-button,
+input[type="number"].control::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"].control { -moz-appearance: textfield; }
