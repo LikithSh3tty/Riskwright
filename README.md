@@ -99,6 +99,12 @@ restructure, the following were added:
 break inside a container are a common failure. Every filesystem path in the project is built
 there and nowhere else.
 
+That turned out to be well founded. `Settings` originally resolved `env_file=".env"`, which is
+relative to the working directory, so running the notebook from `notebooks/` found no `.env`,
+silently fell back to the placeholder password, and failed to authenticate against Postgres.
+The fix was to resolve the path from the module location up to the repository root. Exactly
+the class of defect the prescribed structure puts `docker_utils.py` there to prevent.
+
 The assignment tree also lists `sql/roles.sql`. Role creation instead lives in
 `loader.ensure_readonly_role`, because the role's password comes from the environment and
 interpolating a secret into a committed SQL file would be wrong. The role is created with
@@ -355,6 +361,85 @@ python -m src.ml.train              # 5-fold CV, both models, then SHAP and rule
 python -m src.ml.train --quick      # single split, LightGBM only, about 60 seconds
 python -m src.ml.train --artifacts  # rebuild SHAP and rules from the saved model
 ```
+
+## Fair lending
+
+**The model does not use protected attributes.** They are excluded from the feature matrix in
+`src/data/preprocessor.py`, not filtered out downstream, so they cannot reach the model, the
+SHAP explanation, or the derived rules.
+
+This is a compliance requirement, not a modelling preference. ECOA names sex, marital status,
+and age as protected bases in credit decisions; the equal credit opportunity framework
+generally, and Indian fair-lending expectations, treat them the same way. A model that prices
+or refuses credit on them is a legal failure regardless of how well it performs.
+
+| Excluded | Protected basis |
+|----------|-----------------|
+| `code_gender` | Sex |
+| `name_family_status` | Marital status |
+| `age_years` | Age |
+| `cnt_children` | Familial status, a direct proxy for the two above |
+| `cnt_fam_members` | Familial status, same |
+
+### What it cost
+
+Measured rather than assumed. Same split, same hyperparameters, same seed; the only
+difference is whether those five columns are present.
+
+```bash
+python -m src.ml.train --fairness
+```
+
+| Feature set | Features | ROC-AUC | PR-AUC |
+|-------------|----------|---------|--------|
+| With protected attributes | 125 | 0.7651 | 0.2491 |
+| **Without (shipped)** | **120** | **0.7614** | **0.2427** |
+| Cost of exclusion | | **0.0037** | **0.0064** |
+
+**Excluding every protected attribute costs 0.0037 ROC-AUC.** That is roughly a fifth of the
+gap between LightGBM and the logistic baseline, and far less than the variance between
+reasonable modelling choices. There is no meaningful accuracy argument for keeping them.
+
+This was found by looking at the SHAP output and seeing `code_gender` among the drivers of an
+individual credit decision. It is recorded here because noticing it is the point: a model can
+be accurate, explainable, well tested, and still illegal to deploy.
+
+### Residual proxies, not excluded
+
+Removing a protected attribute does not make a model fair. It removes the most obvious defect.
+These remain and are genuine risks:
+
+- **`name_income_type`** contains the values `Maternity leave` and `Pensioner`, which are
+  proxies for sex and age respectively. The column carries real, legitimate signal about
+  income stability, so it is kept, but a production system would need to demonstrate that its
+  use is not a pretext.
+- **`occupation_type` and `organization_type`** correlate with sex and national origin in most
+  labour markets.
+- **`region_rating_client` and `region_population_relative`** are geographic and therefore
+  carry redlining risk, the classic proxy failure in credit.
+- **`days_employed`** correlates with age, though it measures something a lender may
+  legitimately consider.
+
+### What a production system would additionally need
+
+Excluding the attributes is the floor, not the bar:
+
+- **Disparate impact testing.** Compare approval and default rates across protected groups at
+  the chosen threshold, using the attributes for *testing* while keeping them out of the
+  *model*. The four-fifths rule is the usual starting screen.
+- **Proxy detection.** Fit a model to predict each protected attribute from the remaining
+  features. High accuracy means the model can reconstruct it regardless of exclusion.
+- **Adverse action reason codes.** ECOA requires a declined applicant to be told why. The SHAP
+  contributions are the right raw material, but they need mapping to a fixed, reviewed set of
+  reasons, not free-generated text.
+- **Ongoing monitoring.** Fairness is not established once at training time. Population drift
+  can reintroduce disparate impact from an unchanged model.
+- **Reject inference.** The training data contains only accepted applicants, so the model
+  learns from a censored population. This biases the model in ways that interact with fairness
+  testing.
+
+None of that is implemented here. This is a technical demonstration, and the honest position
+is that removing the protected attributes makes it defensible to discuss, not deployable.
 
 ## Explainability
 
@@ -663,10 +748,10 @@ trust this.
   chatbot but contribute no features. Published solutions gain roughly 0.02 to 0.03 ROC-AUC
   from prior credit history; that is the largest single improvement available.
 - No hyperparameter search. Deliberate, but it means the reported 0.7653 is a floor.
-- **`code_gender` appears among the SHAP contributions**, and both age and education separate
-  risk strongly. All three are legally sensitive in credit decisions in many jurisdictions.
-  Nothing here performs fair-lending testing, disparate-impact analysis, or reject inference.
-  This is a technical demonstration and would not be deployable without that work.
+- Protected attributes are excluded from the model (see **Fair lending** above), at a measured
+  cost of 0.0037 ROC-AUC. What is *not* done: disparate impact testing, proxy detection,
+  adverse action reason codes, and reject inference. Several residual proxies remain and are
+  listed in that section. Not deployable without that work.
 - The 10:1 cost ratio is an assumption, not a measurement. Every threshold and band moves if a
   real recovery model replaces it.
 
