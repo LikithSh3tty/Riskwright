@@ -394,7 +394,7 @@ The threshold minimising `10 * FN + 1 * FP` is selected by sweeping out-of-fold 
 
 | Threshold | Flagged | Recall | Precision | Expected cost |
 |-----------|---------|--------|-----------|---------------|
-| Naive 0.5 | 0.0% | 0.002 | 0.545 | 247,681 |
+| Naive 0.5 | 0.0% | 0.002 | 0.659 | 247,681 |
 | Cost-optimal 0.0837 | 28.9% | 0.644 | 0.180 | **161,314** |
 
 Choosing by cost rather than by convention cuts expected cost by **34.9%**. On a calibrated
