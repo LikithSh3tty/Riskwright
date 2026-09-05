@@ -54,45 +54,54 @@ def _readable_condition(feature: str, threshold: float, go_left: bool) -> str:
     return f"{label} is {comparator} {threshold:.3f}"
 
 
-def _walk(tree, feature_names: list[str], base_rate: float) -> list[dict]:
-    rules: list[dict] = []
+def _collect_paths(tree, feature_names: list[str]) -> dict[int, list[tuple]]:
+    """Map each leaf id to the raw (feature, operator, threshold) triples."""
+    paths: dict[int, list[tuple]] = {}
 
-    def recurse(node: int, conditions: list[str], readable: list[str]) -> None:
+    def recurse(node: int, conditions: list[tuple]) -> None:
         left = tree.children_left[node]
         right = tree.children_right[node]
 
         if left == right:  # leaf
-            counts = tree.value[node][0]
-            # sklearn normalises value to class proportions for classifiers.
-            n = int(tree.n_node_samples[node])
-            default_rate = float(counts[1] / counts.sum()) if counts.sum() else 0.0
-            rules.append(
-                {
-                    "conditions": list(conditions),
-                    "readable": " and ".join(readable) if readable else "all applicants",
-                    "support_n": n,
-                    "default_rate": default_rate,
-                    "lift": float(default_rate / base_rate) if base_rate else 0.0,
-                }
-            )
+            paths[node] = list(conditions)
             return
 
         feature = feature_names[tree.feature[node]]
         threshold = float(tree.threshold[node])
+        recurse(left, conditions + [(feature, "<=", threshold)])
+        recurse(right, conditions + [(feature, ">", threshold)])
 
-        recurse(
-            left,
-            conditions + [f"{feature} <= {threshold:.4f}"],
-            readable + [_readable_condition(feature, threshold, go_left=True)],
-        )
-        recurse(
-            right,
-            conditions + [f"{feature} > {threshold:.4f}"],
-            readable + [_readable_condition(feature, threshold, go_left=False)],
-        )
+    recurse(0, [])
+    return paths
 
-    recurse(0, [], [])
-    return rules
+
+def _simplify(conditions: list[tuple]) -> list[tuple]:
+    """Collapse repeated splits on the same feature into one interval.
+
+    A depth-3 tree frequently splits the same feature twice on a path, giving
+    conditions like "score <= 0.536 and score <= 0.312". The tighter bound
+    subsumes the looser one, and printing both makes a rule look muddled to
+    exactly the reader it is written for.
+    """
+    upper: dict[str, float] = {}
+    lower: dict[str, float] = {}
+    order: list[str] = []
+
+    for feature, operator, threshold in conditions:
+        if feature not in order:
+            order.append(feature)
+        if operator == "<=":
+            upper[feature] = min(upper.get(feature, threshold), threshold)
+        else:
+            lower[feature] = max(lower.get(feature, threshold), threshold)
+
+    simplified: list[tuple] = []
+    for feature in order:
+        if feature in lower:
+            simplified.append((feature, ">", lower[feature]))
+        if feature in upper:
+            simplified.append((feature, "<=", upper[feature]))
+    return simplified
 
 
 def derive_rules(
@@ -129,13 +138,41 @@ def derive_rules(
     )
     tree.fit(filled, y)
 
-    rules = _walk(tree.tree_, list(filled.columns), base_rate)
+    # Leaf statistics are computed from the data, never from tree_.value.
+    # class_weight="balanced" makes that array hold reweighted proportions, so
+    # reading a default rate off it reports something like 78% on a population
+    # whose true rate is 8%. Assigning rows to leaves and counting gives the
+    # real numbers.
+    leaf_of_row = tree.apply(filled)
+    paths = _collect_paths(tree.tree_, list(filled.columns))
+
+    rules: list[dict] = []
     total = len(filled)
-    for index, rule in enumerate(sorted(rules, key=lambda r: r["lift"], reverse=True), 1):
-        rule["rule_id"] = f"R{index}"
-        rule["support_pct"] = round(100 * rule["support_n"] / total, 2)
+    for leaf_id, conditions in paths.items():
+        mask = leaf_of_row == leaf_id
+        support_n = int(mask.sum())
+        if support_n == 0:
+            continue
+        default_rate = float(y[mask].mean())
+        simplified = _simplify(conditions)
+        rules.append(
+            {
+                "conditions": [f"{f} {op} {t:.4f}" for f, op, t in simplified],
+                "readable": " and ".join(
+                    _readable_condition(f, t, go_left=(op == "<="))
+                    for f, op, t in simplified
+                )
+                or "all applicants",
+                "support_n": support_n,
+                "support_pct": round(100 * support_n / total, 2),
+                "default_rate": default_rate,
+                "lift": float(default_rate / base_rate) if base_rate else 0.0,
+            }
+        )
 
     ranked = sorted(rules, key=lambda r: r["lift"], reverse=True)
+    for index, rule in enumerate(ranked, 1):
+        rule["rule_id"] = f"R{index}"
 
     payload = {
         "base_default_rate": base_rate,

@@ -162,7 +162,6 @@ def build_logistic(features: pd.DataFrame) -> Pipeline:
                 LogisticRegression(
                     class_weight="balanced",
                     max_iter=1000,
-                    n_jobs=-1,
                     random_state=RANDOM_STATE,
                 ),
             ),
@@ -310,6 +309,18 @@ def full_train() -> dict:
         lightgbm=oof["lightgbm"],
         logistic=oof["logistic"],
     )
+
+    # Bands come from out-of-fold predictions, calibrated first. Using the
+    # in-sample refit here would pick a threshold on predictions the model has
+    # already seen, which flatters every number that follows.
+    from src.ml.evaluate import choose_bands, save_bands
+    from src.ml.predict import calibrate
+
+    bands = choose_bands(y, calibrate(oof["lightgbm"], final_weight))
+    bands["scale_pos_weight"] = final_weight
+    bands["population_default_rate"] = float(y.mean())
+    bands["basis"] = f"out-of-fold predictions, {N_FOLDS}-fold stratified"
+    save_bands(bands)
 
     payload = {
         "mode": "cross_validated",

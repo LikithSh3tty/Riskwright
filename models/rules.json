@@ -1,0 +1,121 @@
+{
+  "base_default_rate": 0.08072881945686496,
+  "max_depth": 3,
+  "min_samples_leaf": 1000,
+  "features_used": [
+    "ext_source_3",
+    "ext_source_2",
+    "credit_term",
+    "ext_source_1",
+    "amt_goods_price",
+    "own_car_age"
+  ],
+  "features_excluded": [
+    "organization_type",
+    "code_gender"
+  ],
+  "surrogate_fidelity": 0.6734393241217387,
+  "note": "These rules summarise the behaviour of the LightGBM model using a depth-3 surrogate tree. They are a readable approximation for credit policy, not the model itself.",
+  "rules": [
+    {
+      "conditions": [
+        "ext_source_2 <= 0.4598",
+        "ext_source_3 <= 0.3116"
+      ],
+      "readable": "external credit score 2 is at most 0.460 and external credit score 3 is at most 0.312",
+      "support_n": 17005,
+      "support_pct": 5.53,
+      "default_rate": 0.2405763010879153,
+      "lift": 2.9800547401347806,
+      "rule_id": "R1"
+    },
+    {
+      "conditions": [
+        "ext_source_2 > 0.4598",
+        "ext_source_3 <= 0.2158"
+      ],
+      "readable": "external credit score 2 is above 0.460 and external credit score 3 is at most 0.216",
+      "support_n": 13457,
+      "support_pct": 4.38,
+      "default_rate": 0.1558296797205915,
+      "lift": 1.930285624997334,
+      "rule_id": "R2"
+    },
+    {
+      "conditions": [
+        "ext_source_2 <= 0.4598",
+        "ext_source_3 > 0.3116",
+        "ext_source_3 <= 0.5362"
+      ],
+      "readable": "external credit score 2 is at most 0.460 and external credit score 3 is above 0.312 and external credit score 3 is at most 0.536",
+      "support_n": 47551,
+      "support_pct": 15.46,
+      "default_rate": 0.1370318184685916,
+      "lift": 1.6974336970431048,
+      "rule_id": "R3"
+    },
+    {
+      "conditions": [
+        "ext_source_2 <= 0.2479",
+        "ext_source_3 > 0.5362"
+      ],
+      "readable": "external credit score 2 is at most 0.248 and external credit score 3 is above 0.536",
+      "support_n": 11908,
+      "support_pct": 3.87,
+      "default_rate": 0.09892509237487404,
+      "lift": 1.2253999629925434,
+      "rule_id": "R4"
+    },
+    {
+      "conditions": [
+        "ext_source_2 > 0.4598",
+        "ext_source_3 > 0.2158",
+        "ext_source_3 <= 0.3273"
+      ],
+      "readable": "external credit score 2 is above 0.460 and external credit score 3 is above 0.216 and external credit score 3 is at most 0.327",
+      "support_n": 16587,
+      "support_pct": 5.39,
+      "default_rate": 0.09489359136673299,
+      "lift": 1.175461155076553,
+      "rule_id": "R5"
+    },
+    {
+      "conditions": [
+        "ext_source_2 > 0.4598",
+        "ext_source_3 > 0.3273",
+        "ext_source_3 <= 0.5451"
+      ],
+      "readable": "external credit score 2 is above 0.460 and external credit score 3 is above 0.327 and external credit score 3 is at most 0.545",
+      "support_n": 92426,
+      "support_pct": 30.06,
+      "default_rate": 0.05915002272087941,
+      "lift": 0.7327002069252909,
+      "rule_id": "R6"
+    },
+    {
+      "conditions": [
+        "ext_source_2 > 0.2479",
+        "ext_source_2 <= 0.4598",
+        "ext_source_3 > 0.5362"
+      ],
+      "readable": "external credit score 2 is above 0.248 and external credit score 2 is at most 0.460 and external credit score 3 is above 0.536",
+      "support_n": 22940,
+      "support_pct": 7.46,
+      "default_rate": 0.05619006102877071,
+      "lift": 0.6960347173018453,
+      "rule_id": "R7"
+    },
+    {
+      "conditions": [
+        "ext_source_2 > 0.4598",
+        "ext_source_3 > 0.5451"
+      ],
+      "readable": "external credit score 2 is above 0.460 and external credit score 3 is above 0.545",
+      "support_n": 85637,
+      "support_pct": 27.85,
+      "default_rate": 0.03051251211509044,
+      "lift": 0.3779630659828228,
+      "rule_id": "R8"
+    }
+  ]
+}
