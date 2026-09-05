@@ -21,6 +21,22 @@ Built for the NeoStats AI Engineer assignment.
 | Multi-section user interface | pending |
 | Dockerized deployment | done |
 
+## Data loaded
+
+Measured on load, not quoted from the dataset description.
+
+| Table | Rows | Columns | Load time |
+|-------|------|---------|-----------|
+| `application_train` | 307,511 | 122 | 25s |
+| `bureau` | 1,716,428 | 17 | 32s |
+| `previous_application` | 1,670,214 | 37 | 93s |
+
+The target is heavily imbalanced: **8.07%** of applicants defaulted. That figure sets
+`scale_pos_weight` for the model and the boundary of the Low risk band.
+
+A second `docker-compose up` completes the load step in about a second, because the loader
+checks for existing rows before ingesting.
+
 ---
 
 ## Repository structure
