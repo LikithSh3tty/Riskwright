@@ -6,11 +6,11 @@ frontend replaceable.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.routers.predict import PredictRequest, _require_model
 from src.ml import explain as explanation
-from src.ml.rules import load_rules
+from src.ml.rules import POLICY_RULES_FILE, RULES_FILE, load_rules
 from src.utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -46,9 +46,19 @@ def explain_global() -> dict:
 
 
 @router.get("/rules")
-def rules() -> dict:
-    """Business-readable rules derived from the model, sorted by lift."""
+def rules(variant: str = Query(default="faithful", pattern="^(faithful|policy)$")) -> dict:
+    """Business-readable rules derived from the model, sorted by lift.
+
+    Two sets. "faithful" reflects what the model actually leans on, which on
+    this dataset is the external bureau scores almost exclusively. "policy"
+    excludes those scores: less agreement with the model, but rules a credit
+    officer can act on and rules that still apply to an applicant with no
+    bureau history.
+    """
+    filename = RULES_FILE if variant == "faithful" else POLICY_RULES_FILE
     try:
-        return load_rules()
+        payload = load_rules(filename)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    payload["variant"] = variant
+    return payload
