@@ -105,3 +105,44 @@ def test_missing_column_at_inference_is_filled_not_dropped(raw):
 
     assert list(scored.columns) == spec["feature_names"]
     assert pd.isna(scored.loc[0, "amt_annuity"])
+
+
+def test_all_null_numeric_column_stays_numeric(raw):
+    """Regression: the bug that only appeared on the serving path.
+
+    A single-applicant query where a numeric column is NULL comes back from
+    pandas as object dtype. Training never sees this, because a full frame
+    always has some non-null value to infer from, so LightGBM rejected the
+    single-row request with "pandas dtypes must be int, float or bool".
+    """
+    training = prepare_features(raw)
+    spec = build_feature_spec(training)
+
+    single = raw.iloc[[0]].copy()
+    single["amt_annuity"] = pd.Series([None], index=single.index, dtype=object)
+
+    scored = prepare_features(single, feature_spec=spec)
+
+    assert scored["amt_annuity"].dtype.kind == "f"
+    for column in spec["numeric_columns"]:
+        assert scored[column].dtype.kind in "fiub", f"{column} is {scored[column].dtype}"
+
+
+def test_calibration_inverts_the_imbalance_weighting():
+    """A weighted output of 0.5 must map back to the true base rate.
+
+    Training with scale_pos_weight multiplies the predicted odds by that
+    weight, so raw model output is a ranking score rather than a probability.
+    The correction is exact, and this identity is what proves it.
+    """
+    from src.ml.predict import calibrate
+
+    weight = 11.387
+    assert calibrate(0.5, weight) == pytest.approx(1 / (1 + weight))
+    assert calibrate(0.0, weight) == pytest.approx(0.0)
+    assert calibrate(1.0, weight) == pytest.approx(1.0)
+
+    # Calibration must not reorder anyone: ROC-AUC and PR-AUC are unchanged.
+    raw_scores = np.array([0.1, 0.4, 0.5, 0.9])
+    calibrated = calibrate(raw_scores, weight)
+    assert np.all(np.diff(calibrated) > 0)

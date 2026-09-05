@@ -18,6 +18,7 @@ FORCE_RELOAD is set, so a second `docker-compose up` starts in seconds.
 from __future__ import annotations
 
 import argparse
+import warnings
 from pathlib import Path
 
 import pandas as pd
@@ -252,6 +253,73 @@ def load(force: bool | None = None) -> None:
         ensure_readonly_role(conn)
 
     log.info("load complete")
+
+
+# --------------------------------------------------------------------------
+# Reading back out
+# --------------------------------------------------------------------------
+
+def _read_sql(query: str, conn, params: dict | None = None) -> pd.DataFrame:
+    """pandas.read_sql over a raw psycopg2 connection.
+
+    pandas warns that only SQLAlchemy connectables are tested. SQLAlchemy is
+    not worth a dependency here: every read is a plain SELECT and the chatbot's
+    query path deliberately uses raw psycopg2 so it can pin a read-only role
+    and a statement timeout. The warning is silenced at the one call site
+    rather than globally.
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="pandas only supports SQLAlchemy connectable",
+            category=UserWarning,
+        )
+        return pd.read_sql(query, conn, params=params)
+
+
+def read_table(
+    table: str,
+    columns: list[str] | None = None,
+    limit: int | None = None,
+) -> pd.DataFrame:
+    """Read a whitelisted table into pandas.
+
+    Training reads from Postgres rather than from the CSV so that the model
+    sees exactly the same values, types, and column casing as the chatbot and
+    the prediction endpoints. One source, one casing convention, no drift.
+    """
+    if table not in ALLOWED_TABLES:
+        raise ValueError(f"{table!r} is not a whitelisted table")
+
+    selection = ", ".join(columns) if columns else "*"
+    query = f"SELECT {selection} FROM {table}"
+    if limit:
+        query += f" LIMIT {int(limit)}"
+
+    settings = get_settings()
+    with psycopg2.connect(settings.dsn()) as conn:
+        return _read_sql(query, conn)
+
+
+def read_application_table(limit: int | None = None) -> pd.DataFrame:
+    """The model's training frame.
+
+    application_train only. bureau and previous_application are loaded for the
+    talk-to-data layer, which needs more than one table to answer a join
+    question, but the model does not consume them. Folding prior credit history
+    in would mean rebuilding those aggregates for a single applicant at
+    inference time, and a divergence between the training aggregate and the
+    serving aggregate fails silently.
+    """
+    return read_table("application_train", limit=limit)
+
+
+def fetch_applicant(sk_id_curr: int) -> pd.DataFrame:
+    """One applicant row, for the prediction and explanation endpoints."""
+    settings = get_settings()
+    query = "SELECT * FROM application_train WHERE sk_id_curr = %(sk_id)s"
+    with psycopg2.connect(settings.dsn()) as conn:
+        return _read_sql(query, conn, params={"sk_id": int(sk_id_curr)})
 
 
 def main() -> None:

@@ -141,6 +141,15 @@ def prepare_features(
         if column not in frame.columns:
             frame[column] = np.nan
 
+    # Numeric dtypes are pinned, not just column order and category levels.
+    # A single-row query where a numeric column is NULL comes back from
+    # pandas as object dtype, which LightGBM rejects outright. That only
+    # shows up on the serving path, never in training, because a full frame
+    # always has some non-null value to infer from.
+    for column in feature_spec.get("numeric_columns", []):
+        if column in frame.columns:
+            frame[column] = pd.to_numeric(frame[column], errors="coerce")
+
     # Column order is part of the contract with the fitted model.
     return frame[feature_spec["feature_names"]]
 
@@ -148,9 +157,11 @@ def prepare_features(
 def build_feature_spec(features: pd.DataFrame) -> dict:
     """Describe a fitted feature matrix so inference can reproduce it."""
     categorical = _categorical_columns(features)
+    numeric = [c for c in features.columns if c not in categorical]
     return {
         "feature_names": list(features.columns),
         "categorical_columns": categorical,
+        "numeric_columns": numeric,
         "categories": {
             column: [str(v) for v in features[column].cat.categories]
             for column in categorical
