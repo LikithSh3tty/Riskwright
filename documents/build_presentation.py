@@ -477,11 +477,11 @@ def build() -> Path:
 
         # 14+. Screenshots -------------------------------------------------------
         shots = [
-            ("eda.png", "Data understanding", "Dataset summary, insights, and the distribution explorer."),
-            ("prediction.png", "Risk prediction", "Score with band and recommended action."),
-            ("explain.png", "Why this decision", "SHAP contributions and the plain-English narrative."),
-            ("rules.png", "Derived rules", "Both rule sets with support, default rate and lift."),
-            ("chat.png", "Ask the data", "Generated SQL is shown, not hidden."),
+            ("eda.jpg", "Data understanding", "Dataset summary, insights, and the distribution explorer."),
+            ("prediction.jpg", "Risk prediction", "Score with band and recommended action."),
+            ("explain.jpg", "Why this decision", "SHAP contributions and the plain-English narrative."),
+            ("rules.jpg", "Derived rules", "Both rule sets with support, default rate and lift."),
+            ("chat.jpg", "Ask the data", "Generated SQL is shown, not hidden."),
         ]
         for name, title, caption in shots:
             if not (SHOTS / name).exists():
