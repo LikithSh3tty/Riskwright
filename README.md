@@ -528,32 +528,73 @@ generated and the reference query and compares results, so correct SQL written d
 still passes. Refusal questions are scored on whether the bot declined.
 
 ```bash
-python -m tests.run_chatbot_eval --versions v1 v2 v3 v4 --out docs/eval_results.md
+python -m tests.run_chatbot_eval --versions v1 v2 v3 v4   # development set
+python -m tests.run_chatbot_eval --heldout --versions v4  # held-out set
 ```
+
+**Headline: 100% on the development set, 7/8 on held-out questions written after the prompt
+was frozen.** The second number is the one to trust.
+
+#### Held-out set
+
+The 30 development questions stopped being a clean measurement the moment v4 was tuned on the
+failures they exposed. At that point they are a training set, and a score on your own training
+set says nothing about generalisation. So `tests/chatbot_heldout.yaml` holds eight further
+questions, written afterwards, deliberately using shapes absent from the development set:
+percentiles, multi-condition filters, column-to-column ratios, distinct counts, and
+per-applicant averaging over a child table.
+
+| Version | Held-out run 1 | Held-out run 2 |
+|---------|----------------|----------------|
+| v3 | 7/8 | 7/8 |
+| v4 | 6/8 | 7/8 |
+
+**88% held-out against 100% development. That 12 point gap is the cost of tuning on the
+development set, and it is the honest measure of this system.**
+
+It also shows **v4 has no reproducible advantage over v3 out of sample.** The two questions v4
+gained were specific to the failures it was written to fix. Tuning fixed those cases without
+making the system generally better, which is precisely what a held-out set exists to reveal.
+
+#### Development set, as tuning history
 
 | Version | Accuracy | Passed |
 |---------|----------|--------|
 | v1 naive | 53% | 16/30 |
 | v2 compact schema, few-shot | 87% | 26/30 |
 | v3 structured action output | 93% | 28/30 |
-| v4 join discipline | **100%** | 30/30 |
+| v4 join discipline | 100% | 30/30 |
 
-By category, on v4: simple aggregate 5/5, filter plus aggregate 5/5, group-by and ranking 5/5,
-joins 4/4, ambiguous 3/3, non-existent column 3/3, unanswerable 3/3, memory 2/2.
+Run-to-run variance is one to two questions: across two runs v1 scored 57% then 53% and v2
+scored 83% then 87%. Only the v1 to v2 step, worth ten questions, is clearly beyond noise. The
+v2 to v3 step is smaller but consistent and concentrated in the refusal and ambiguity
+categories, which is what it was designed to move.
 
-**Read that 100% with two caveats, both of which matter more than the number.**
+#### The failure that matters most
 
-First, **run-to-run variance is one to two questions.** Across two independent runs v1 scored
-57% then 53%, and v2 scored 83% then 87%. The v3 to v4 gap of two questions is within that
-noise. The only difference far beyond it is v1 to v2, worth ten questions.
+Held-out question H8 asks "How many applicants were approved for the loan they applied for?"
+The dataset cannot answer this: `application_train` records whether an applicant later
+defaulted, not whether their application was approved, and `name_contract_status` in
+`previous_application` describes *prior* applications.
 
-Second, **v4 was tuned on the two failures v3 exposed, and there is no held-out set.** Its
-score is optimistic by construction. v1 through v3 were measured against questions written
-blind and are the trustworthy numbers; v4 demonstrates that a measured failure can be fixed,
-not that the system is perfect. A larger question set with a train and test split is the
-honest next step and is listed under improvements.
+In one run v4 refused it correctly. In another it answered:
 
-The two v3 failures are worth recording, because both were the same root cause:
+> 290,065 applicants were approved for the loan they applied for.
+
+That number is real, the SQL was valid, and it answers a different question than the one
+asked. It is the most dangerous output this system can produce, because nothing about it looks
+wrong.
+
+**Refusal is therefore probabilistic, not guaranteed.** The schema validator makes it
+impossible to query a column that does not exist, which is a hard guarantee. Declining a
+question that is semantically unanswerable from columns that *do* exist is a judgement the
+model makes, and it does not make it identically every time. That distinction is stated here
+rather than buried, because a reader is entitled to know which safety properties are enforced
+and which are merely likely.
+
+#### The v3 failures that produced v4
+
+Both were the same root cause:
 
 | ID | Question | What went wrong |
 |----|----------|-----------------|
