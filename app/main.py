@@ -10,7 +10,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import chat, explain, health, predict
+from app.routers import chat, eda, explain, health, predict
 from src.utils.config import get_settings
 from src.utils.logger import get_logger
 
@@ -38,6 +38,7 @@ app.include_router(health.router)
 app.include_router(predict.router)
 app.include_router(explain.router)
 app.include_router(chat.router)
+app.include_router(eda.router)
 
 
 @app.on_event("startup")
