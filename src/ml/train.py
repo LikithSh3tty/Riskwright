@@ -380,6 +380,17 @@ def build_derived_artifacts() -> dict:
 
     top_features = [row["feature"] for row in importance["features"]]
 
+    # The model's own decision at the cost-optimal threshold. Fidelity is
+    # measured against this, not against the observed outcome.
+    from src.ml.evaluate import load_bands
+    from src.ml.predict import _load_model, calibrate
+
+    bands = load_bands()
+    weighted = _load_model().predict_proba(features)[:, 1]
+    model_decision = (
+        calibrate(weighted, bands["scale_pos_weight"]) >= bands["t_high"]
+    ).astype(int)
+
     def report(title: str, payload: dict) -> None:
         log.info("%s (fidelity %.3f)", title, payload["surrogate_fidelity"])
         for rule in payload["rules"][:3]:
@@ -394,7 +405,9 @@ def build_derived_artifacts() -> dict:
 
     # Faithful set: whatever the model actually leans on.
     with timed("derive rules"):
-        rules = derive_rules(features, target, top_features)
+        rules = derive_rules(
+            features, target, top_features, model_decision=model_decision
+        )
     save_rules(rules)
     report("rules (faithful)", rules)
 
@@ -404,7 +417,11 @@ def build_derived_artifacts() -> dict:
     # some applicants have no bureau coverage at all.
     with timed("derive policy rules"):
         policy = derive_rules(
-            features, target, top_features, exclude=(EXTERNAL_SCORE_PREFIX,)
+            features,
+            target,
+            top_features,
+            exclude=(EXTERNAL_SCORE_PREFIX,),
+            model_decision=model_decision,
         )
     save_rules(policy, POLICY_RULES_FILE)
     report("rules (external scores excluded)", policy)

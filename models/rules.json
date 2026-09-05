@@ -14,7 +14,10 @@
     "organization_type",
     "code_gender"
   ],
-  "surrogate_fidelity": 0.6734393241217387,
+  "excluded_by_request": [],
+  "surrogate_fidelity": 0.7960430683780417,
+  "fidelity_note": "Share of applicants where the surrogate tree and the LightGBM model reach the same decision at the cost-optimal threshold.",
+  "accuracy_vs_outcome": 0.6734393241217387,
   "note": "These rules summarise the behaviour of the LightGBM model using a depth-3 surrogate tree. They are a readable approximation for credit policy, not the model itself.",
   "rules": [
     {

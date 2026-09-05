@@ -1,0 +1,128 @@
+{
+  "base_default_rate": 0.08072881945686496,
+  "max_depth": 3,
+  "min_samples_leaf": 1000,
+  "features_used": [
+    "credit_term",
+    "amt_goods_price",
+    "own_car_age",
+    "days_employed",
+    "amt_annuity"
+  ],
+  "features_excluded": [
+    "organization_type",
+    "code_gender",
+    "name_education_type"
+  ],
+  "excluded_by_request": [
+    "ext_source"
+  ],
+  "surrogate_fidelity": 0.709317715463837,
+  "fidelity_note": "Share of applicants where the surrogate tree and the LightGBM model reach the same decision at the cost-optimal threshold.",
+  "accuracy_vs_outcome": 0.7010448406723662,
+  "note": "These rules summarise the behaviour of the LightGBM model using a depth-3 surrogate tree. They are a readable approximation for credit policy, not the model itself.",
+  "rules": [
+    {
+      "conditions": [
+        "days_employed <= -1646.5000",
+        "credit_term > 10.8087",
+        "credit_term <= 12.6623"
+      ],
+      "readable": "length of employment is at least 4.5 years and loan term is above 10.809 and loan term is at most 12.662",
+      "support_n": 6212,
+      "support_pct": 2.02,
+      "default_rate": 0.14246619446233097,
+      "lift": 1.7647501279075875,
+      "rule_id": "R1"
+    },
+    {
+      "conditions": [
+        "days_employed > -1646.5000",
+        "amt_goods_price <= 677889.0000",
+        "credit_term > 10.7628"
+      ],
+      "readable": "length of employment is less than 4.5 years and price of the goods financed is at most 677,889 and loan term is above 10.763",
+      "support_n": 83547,
+      "support_pct": 27.17,
+      "default_rate": 0.12497157288711742,
+      "lift": 1.5480416253812836,
+      "rule_id": "R2"
+    },
+    {
+      "conditions": [
+        "days_employed > -1646.5000",
+        "amt_goods_price > 677889.0000",
+        "own_car_age > 8.5000"
+      ],
+      "readable": "length of employment is less than 4.5 years and price of the goods financed is above 677,889 and age of car owned is above 8.500",
+      "support_n": 23051,
+      "support_pct": 7.5,
+      "default_rate": 0.0774369875493471,
+      "lift": 0.9592235842210383,
+      "rule_id": "R3"
+    },
+    {
+      "conditions": [
+        "days_employed > -1646.5000",
+        "amt_goods_price <= 677889.0000",
+        "credit_term <= 10.7628"
+      ],
+      "readable": "length of employment is less than 4.5 years and price of the goods financed is at most 677,889 and loan term is at most 10.763",
+      "support_n": 12559,
+      "support_pct": 4.08,
+      "default_rate": 0.07118401146588105,
+      "lift": 0.881767031213879,
+      "rule_id": "R4"
+    },
+    {
+      "conditions": [
+        "days_employed <= -1646.5000",
+        "credit_term > 12.6623"
+      ],
+      "readable": "length of employment is at least 4.5 years and loan term is above 12.662",
+      "support_n": 155309,
+      "support_pct": 50.51,
+      "default_rate": 0.06314508495966106,
+      "lift": 0.7821876423375764,
+      "rule_id": "R5"
+    },
+    {
+      "conditions": [
+        "days_employed <= -1646.5000",
+        "credit_term <= 9.4333"
+      ],
+      "readable": "length of employment is at least 4.5 years and loan term is at most 9.433",
+      "support_n": 5610,
+      "support_pct": 1.82,
+      "default_rate": 0.058288770053475936,
+      "lift": 0.7220317409028978,
+      "rule_id": "R6"
+    },
+    {
+      "conditions": [
+        "days_employed > -1646.5000",
+        "amt_goods_price > 677889.0000",
+        "own_car_age <= 8.5000"
+      ],
+      "readable": "length of employment is less than 4.5 years and price of the goods financed is above 677,889 and age of car owned is at most 8.500",
+      "support_n": 6854,
+      "support_pct": 2.23,
+      "default_rate": 0.052232273125182374,
+      "lift": 0.6470090046726267,
+      "rule_id": "R7"
+    },
+    {
+      "conditions": [
+        "days_employed <= -1646.5000",
+        "credit_term > 9.4333",
+        "credit_term <= 10.8087"
+      ],
+      "readable": "length of employment is at least 4.5 years and loan term is above 9.433 and loan term is at most 10.809",
+      "support_n": 14369,
+      "support_pct": 4.67,
+      "default_rate": 0.022826919061869302,
+      "lift": 0.28276047160662604,
+      "rule_id": "R8"
+    }
+  ]
+}

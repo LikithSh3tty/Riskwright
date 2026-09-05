@@ -5,41 +5,41 @@
     "ratio": 10.0,
     "note": "A false negative is an approved loan that defaults; a false positive is a creditworthy applicant refused. The ratio is an assumption, not a measurement."
   },
-  "t_high": 0.075061,
+  "t_high": 0.08236,
   "t_high_basis": "cost-optimal: the threshold minimising expected cost under the stated ratio, computed on calibrated probabilities",
-  "t_low": 0.0333553238820474,
+  "t_low": 0.033400205187942296,
   "t_low_basis": "business judgment: the safest 40% of applicants are auto-approved without review. Not an optimum.",
   "auto_approve_rate": 0.4,
   "at_cost_optimal_threshold": {
-    "threshold": 0.075061,
+    "threshold": 0.08236,
     "confusion_matrix": {
-      "true_negative": 201235,
-      "false_positive": 81451,
-      "false_negative": 7781,
-      "true_positive": 17044
+      "true_negative": 209424,
+      "false_positive": 73262,
+      "false_negative": 8651,
+      "true_positive": 16174
     },
-    "precision": 0.1730443169704046,
-    "recall": 0.6865659617321249,
-    "f1": 0.276419072332144,
-    "expected_cost": 159261.0,
-    "flagged_rate": 0.320297485293209
+    "precision": 0.18084440270137306,
+    "recall": 0.6515206445115811,
+    "f1": 0.283106221720447,
+    "expected_cost": 159772.0,
+    "flagged_rate": 0.2908383765133605
   },
   "at_naive_half_threshold": {
     "threshold": 0.5,
     "confusion_matrix": {
-      "true_negative": 282633,
-      "false_positive": 53,
-      "false_negative": 24757,
-      "true_positive": 68
+      "true_negative": 282640,
+      "false_positive": 46,
+      "false_negative": 24752,
+      "true_positive": 73
     },
-    "precision": 0.5619834710743802,
-    "recall": 0.0027391742195367573,
-    "f1": 0.00545177583580534,
-    "expected_cost": 247623.0,
-    "flagged_rate": 0.0003934818591855251
+    "precision": 0.6134453781512605,
+    "recall": 0.0029405840886203424,
+    "f1": 0.005853110968569596,
+    "expected_cost": 247566.0,
+    "flagged_rate": 0.00038697802680229325
   },
-  "cost_saving_vs_half": 88362.0,
-  "scale_pos_weight": 11.387150050352465,
+  "cost_saving_vs_half": 87794.0,
+  "scale_pos_weight": 11.387150050352467,
   "population_default_rate": 0.08072881945686496,
   "basis": "out-of-fold predictions, 5-fold stratified"
 }

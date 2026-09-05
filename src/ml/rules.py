@@ -117,6 +117,7 @@ def derive_rules(
     target: np.ndarray | pd.Series,
     top_features: list[str],
     exclude: tuple[str, ...] = (),
+    model_decision: np.ndarray | None = None,
 ) -> dict:
     """Fit a shallow surrogate tree and emit readable rules."""
     candidates = [
@@ -194,7 +195,20 @@ def derive_rules(
         "features_used": numeric,
         "features_excluded": dropped,
         "excluded_by_request": list(exclude),
-        "surrogate_fidelity": float(tree.score(filled, y)),
+        # Fidelity means agreement with the MODEL, which is what a surrogate
+        # is approximating. tree.score(X, y) would measure accuracy against the
+        # outcome instead, and at an 8% base rate that number is meaningless:
+        # predicting "never defaults" scores 92%.
+        "surrogate_fidelity": (
+            float((tree.predict(filled) == model_decision).mean())
+            if model_decision is not None
+            else None
+        ),
+        "fidelity_note": (
+            "Share of applicants where the surrogate tree and the LightGBM "
+            "model reach the same decision at the cost-optimal threshold."
+        ),
+        "accuracy_vs_outcome": float(tree.score(filled, y)),
         "note": (
             "These rules summarise the behaviour of the LightGBM model using a "
             "depth-3 surrogate tree. They are a readable approximation for "
