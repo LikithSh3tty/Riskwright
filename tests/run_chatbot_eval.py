@@ -23,6 +23,7 @@ import argparse
 import json
 import math
 import time
+from decimal import Decimal
 from pathlib import Path
 
 import psycopg2
@@ -38,13 +39,14 @@ from src.utils.logger import get_logger
 log = get_logger(__name__)
 
 EVAL_FILE = "tests/chatbot_eval.yaml"
+HELDOUT_FILE = "tests/chatbot_heldout.yaml"
 
 # Relative tolerance when comparing numeric answers.
 DEFAULT_TOLERANCE = 0.01
 
 
-def load_questions() -> tuple[list[dict], dict]:
-    path = project_root() / EVAL_FILE
+def load_questions(eval_file: str = EVAL_FILE) -> tuple[list[dict], dict]:
+    path = project_root() / eval_file
     spec = yaml.safe_load(path.read_text(encoding="utf-8"))
     return spec["questions"], spec.get("defaults", {})
 
@@ -58,12 +60,19 @@ def run_reference(sql: str) -> list[tuple]:
 
 
 def _numbers(rows) -> list[float]:
+    """Extract comparable numbers from a result set.
+
+    Decimal matters here. Postgres returns numeric for avg() over an integer
+    column, and psycopg2 hands that back as Decimal, which is neither int nor
+    float. Omitting it silently scored a correct answer as "reference produced
+    no number", i.e. a harness bug masquerading as a model failure.
+    """
     out: list[float] = []
     for row in rows:
         for value in row:
             if isinstance(value, bool):
                 continue
-            if isinstance(value, (int, float)):
+            if isinstance(value, (int, float, Decimal)):
                 out.append(float(value))
     return out
 
@@ -189,8 +198,8 @@ def evaluate_question(question: dict, version: str, defaults: dict) -> dict:
     return record
 
 
-def run(version: str) -> list[dict]:
-    questions, defaults = load_questions()
+def run(version: str, eval_file: str = EVAL_FILE) -> list[dict]:
+    questions, defaults = load_questions(eval_file)
     records: list[dict] = []
     for question in questions:
         record = evaluate_question(question, version, defaults)
@@ -297,6 +306,11 @@ def render_markdown(results: dict[str, tuple[list[dict], dict]]) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate the chatbot")
     parser.add_argument("--versions", nargs="+", default=[CURRENT_VERSION])
+    parser.add_argument(
+        "--heldout",
+        action="store_true",
+        help="run the held-out questions instead of the development set",
+    )
     parser.add_argument("--out", default=None, help="write a markdown report here")
     parser.add_argument("--json", default=None, help="write raw records here")
     args = parser.parse_args()
@@ -304,7 +318,7 @@ def main() -> None:
     results: dict[str, tuple[list[dict], dict]] = {}
     for version in args.versions:
         log.info("running evaluation for prompt %s", version)
-        records = run(version)
+        records = run(version, HELDOUT_FILE if args.heldout else EVAL_FILE)
         summary = summarise(records)
         results[version] = (records, summary)
         log.info(

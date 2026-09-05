@@ -1,0 +1,88 @@
+# Held-out evaluation questions.
+#
+# Written AFTER v4's prompt was frozen and deliberately not derived from any
+# failure the development set exposed. None of these question shapes appear in
+# chatbot_eval.yaml: percentiles, multi-condition filters, column-to-column
+# ratios, distinct counts, and per-applicant averaging over a child table are
+# all new here.
+#
+# The development set measured the tuning history. This measures whether the
+# tuning generalises. It is run once and reported as-is, pass or fail.
+
+defaults:
+  tolerance: 0.01
+
+questions:
+
+  - id: H1
+    category: percentile
+    question: What is the 90th percentile of loan amount?
+    expect: sql
+    reference_sql: |
+      SELECT percentile_cont(0.9) WITHIN GROUP (ORDER BY amt_credit)
+      FROM application_train
+
+  - id: H2
+    category: multi_filter
+    question: How many unemployed applicants own property?
+    expect: sql
+    reference_sql: |
+      SELECT count(*) FROM application_train
+      WHERE name_income_type = 'Unemployed' AND flag_own_realty = 'Y'
+
+  - id: H3
+    category: column_ratio
+    question: On average, how large is the loan compared to the price of the goods being financed?
+    expect: sql
+    reference_sql: |
+      SELECT avg(amt_credit / amt_goods_price)
+      FROM application_train
+      WHERE amt_goods_price > 0
+
+  - id: H4
+    category: distinct_count
+    question: How many different types of credit appear in the bureau records?
+    expect: sql
+    reference_sql: SELECT count(DISTINCT credit_type) FROM bureau
+
+  - id: H5
+    category: join
+    question: On average, how many previous applications does an applicant have?
+    expect: sql
+    # Per-applicant averaging over a child table. The trap is averaging raw
+    # join rows instead of per-applicant counts.
+    reference_sql: |
+      SELECT avg(n) FROM (
+        SELECT sk_id_curr, count(*) AS n
+        FROM previous_application GROUP BY sk_id_curr
+      ) t
+
+  - id: H6
+    category: groupby_ranking
+    question: Which housing type has the lowest default rate?
+    expect: sql
+    reference_sql: |
+      SELECT name_housing_type
+      FROM application_train
+      GROUP BY name_housing_type
+      ORDER BY avg(target::float) ASC
+      LIMIT 1
+    compare: text
+
+  - id: H7
+    category: ambiguous
+    question: Show me the large loans.
+    expect: clarify
+    why: >
+      "Large" has no threshold, and it could mean absolute amount or size
+      relative to income.
+
+  - id: H8
+    category: unanswerable
+    question: How many applicants were approved for the loan they applied for?
+    expect: refuse
+    why: >
+      application_train records whether an applicant later defaulted, not
+      whether the current application was approved. name_contract_status in
+      previous_application refers to PRIOR applications, so answering from it
+      would silently answer a different question.
