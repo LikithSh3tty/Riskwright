@@ -31,11 +31,26 @@ Measured on load, not quoted from the dataset description.
 | `bureau` | 1,716,428 | 17 | 32s |
 | `previous_application` | 1,670,214 | 37 | 93s |
 
-The target is heavily imbalanced: **8.07%** of applicants defaulted. That figure sets
-`scale_pos_weight` for the model and the boundary of the Low risk band.
+The target is heavily imbalanced: **8.07%** of applicants defaulted. The imbalance ratio that
+follows from it, `(1 - 0.0807) / 0.0807`, is roughly 11.4, and that ratio is what
+`scale_pos_weight` is set to. It is computed in `train.py` from the actual training split and
+logged at fit time rather than hardcoded, so the value always matches the data the model
+actually saw.
 
 A second `docker-compose up` completes the load step in about a second, because the loader
 checks for existing rows before ingesting.
+
+### Which tables the model uses
+
+The model trains on `application_train` only.
+
+`bureau` and `previous_application` are loaded to serve the talk-to-data layer, which needs
+more than one table before it can answer a join question. They are not consumed by the model.
+This is a deliberate scope decision, not an oversight: aggregating prior credit history into
+applicant-level features would also require rebuilding those aggregates at inference time for
+a single applicant, and a divergence between the training aggregate and the serving aggregate
+produces no error, only quietly wrong predictions. Adding them is the first improvement listed
+under limitations.
 
 ---
 
