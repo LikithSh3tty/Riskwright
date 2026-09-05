@@ -46,7 +46,9 @@ FEATURE_LABELS: dict[str, str] = {
     "ext_source_2": "external credit score 2",
     "ext_source_3": "external credit score 3",
     "days_birth": "age",
-    "age_years": "age",
+    # age_years is derived from days_birth, so it needs its own label or a
+    # narrative mentioning both reads "age and age".
+    "age_years": "age in years",
     "days_employed": "length of employment",
     "days_employed_anomalous": "not currently employed",
     "days_registration": "time since registration",
@@ -112,18 +114,46 @@ def _base_value(explainer: shap.TreeExplainer) -> float:
     return float(value[-1])
 
 
+def _display_value(feature: str, value) -> object:
+    """Render a feature value the way a reader expects to see it.
+
+    Days columns are negative offsets from the application date, so a raw
+    days_birth of -9461 under the label "age" looks like a defect. It is shown
+    in years instead.
+    """
+    if pd.isna(value):
+        return None
+    if isinstance(value, (int, float, np.number)):
+        number = float(value)
+        if feature.startswith("days_") and feature != "days_employed_anomalous":
+            return round(abs(number) / 365.25, 1)
+        return number
+    return str(value)
+
+
 def _narrative(contributions: list[dict], probability: float, band: str) -> str:
     """Plain-English summary of what drove the score.
 
     Positive SHAP values push toward default, negative pull away from it.
     """
-    raising = [c for c in contributions if c["shap_value"] > 0][:3]
-    lowering = [c for c in contributions if c["shap_value"] < 0][:3]
+    raising = [c for c in contributions if c["shap_value"] > 0][:5]
+    lowering = [c for c in contributions if c["shap_value"] < 0][:5]
 
     def phrase(items: list[dict]) -> str:
-        names = [label_for(c["feature"]) for c in items]
+        # Several features describe the same underlying quantity (days_birth
+        # and age_years are the same fact in different units). Repeating the
+        # label reads as a bug to the non-technical reader this is written for.
+        names: list[str] = []
+        for candidate in items:
+            name = label_for(candidate["feature"])
+            root = name.replace(" in years", "")
+            if not any(root == existing.replace(" in years", "") for existing in names):
+                names.append(name)
         if not names:
             return ""
+        if len(names) == 1:
+            return names[0]
+        names = names[:3]
         if len(names) == 1:
             return names[0]
         return ", ".join(names[:-1]) + f" and {names[-1]}"
@@ -158,12 +188,7 @@ def explain_frame(frame: pd.DataFrame) -> dict:
     contributions = []
     for feature, shap_value in zip(features.columns, values):
         value = raw_row[feature]
-        if pd.isna(value):
-            display: object = None
-        elif isinstance(value, (int, float, np.number)):
-            display = float(value)
-        else:
-            display = str(value)
+        display = _display_value(feature, value)
         contributions.append(
             {
                 "feature": feature,
