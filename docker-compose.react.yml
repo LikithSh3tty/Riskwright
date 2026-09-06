@@ -1,0 +1,30 @@
+# Optional React frontend.
+#
+# This file ADDS a service. It changes nothing in docker-compose.yml, so the
+# submitted stack still comes up unchanged with the original file alone:
+#
+#   docker-compose up                                          # Streamlit, port 8501
+#   docker-compose -f docker-compose.yml -f docker-compose.react.yml up
+#                                                              # adds React on 5173
+#
+# Both UIs can run together because they bind different ports and different
+# container names. The React frontend consumes exactly the endpoints the
+# Streamlit client already uses; the API is unchanged.
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: riskwright-frontend
+    ports:
+      # 5173 on the host so it never collides with Streamlit on 8501.
+      - "5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    # No environment block on purpose. Vite inlines VITE_* values into the
+    # built bundle at build time, so anything named here would ship to the
+    # browser. The Anthropic key belongs to the api service and stays there.
+    # The frontend reaches the API only through nginx's /api/ proxy.

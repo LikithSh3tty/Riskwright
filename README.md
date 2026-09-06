@@ -888,6 +888,21 @@ trust this.
 - Only three tables are exposed. Questions needing the other four are refused correctly but
   are refused nonetheless.
 
+**Demonstration versus measurement**
+
+- **Applicants shown in the UI are in the training set.** `full_train` refits both models on
+  all 307,511 rows before saving them, which is the right production choice but means no row
+  of `application_train` is out-of-sample for the served model. The cross-validation folds
+  were a measurement device and are not retained.
+- The reported metrics are unaffected by this. ROC-AUC, PR-AUC, the calibration identity, the
+  cost threshold and the fair-lending delta all come from 5-fold cross-validation, where every
+  scored row was out of fold. What the UI demonstrates is the interface, the SHAP
+  decomposition and the banding, none of which is a performance claim.
+- An individual prediction shown in the UI should therefore not be read as evidence of
+  generalisation. Serving a model deliberately fitted on a subset, purely so the demo could
+  be out-of-sample, would mean the published metrics no longer described the deployed
+  artifact. That is a worse trade than this caveat.
+
 **Engineering**
 
 - Model artifacts are committed to git. This contradicts a common convention but follows the

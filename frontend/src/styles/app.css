@@ -1,0 +1,535 @@
+/* Application shell and shared components. */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+/* ---------- Rail ---------- */
+
+.rail {
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  padding: var(--s5) var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s6);
+  position: sticky;
+  top: 0;
+  /* A grid item stretches to the row height by default, which makes it as tall
+   * as the whole page and leaves position:sticky with nothing to do. Aligning
+   * to the start bounds it to the viewport so the rail actually pins. */
+  align-self: start;
+  height: 100dvh;
+  overflow-y: auto;
+}
+
+.rail-mark { display: flex; align-items: baseline; gap: var(--s2); }
+.rail-mark strong {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.rail-mark span { font-size: var(--t-micro); color: var(--ink-3); }
+
+.rail-nav { display: flex; flex-direction: column; gap: 2px; }
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--t-small);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.rail-item:hover { background: rgba(38, 34, 28, 0.05); color: var(--ink); }
+.rail-item:active { transform: translateY(0.5px); }
+.rail-item[aria-current="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 550;
+  box-shadow: var(--shadow-1);
+}
+.rail-item svg { flex: none; color: currentColor; opacity: 0.72; }
+.rail-item[aria-current="true"] svg { color: var(--accent); opacity: 1; }
+
+.rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--s2); }
+
+.status-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+}
+.status-line b { font-weight: 500; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.status-line.is-bad b { color: var(--danger); }
+
+/* ---------- Main ---------- */
+
+.main { min-width: 0; padding: var(--s7) var(--s7) var(--s8); }
+.main-inner { max-width: 1180px; }
+
+.page-head { margin-bottom: var(--s6); }
+.page-head p { color: var(--ink-2); margin-top: var(--s2); max-width: 68ch; }
+
+.section { margin-top: var(--s7); }
+.section > h2 { margin-bottom: var(--s4); }
+.section-note { color: var(--ink-3); font-size: var(--t-small); margin-top: var(--s2); }
+
+/* ---------- Figures ---------- */
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--s5);
+  padding-bottom: var(--s5);
+  border-bottom: 1px solid var(--line);
+}
+.figure-label {
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+  margin-bottom: var(--s1);
+}
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: 550;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.metric-value.is-mono { font-family: var(--font-mono); font-size: 1.375rem; }
+
+/* ---------- Panels ---------- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: var(--s5);
+}
+.panel-flush { padding: 0; overflow: hidden; }
+
+/* ---------- Controls ---------- */
+
+.field { display: flex; flex-direction: column; gap: var(--s2); }
+.field > label { font-size: var(--t-small); color: var(--ink-2); font-weight: 500; }
+.field-hint { font-size: var(--t-micro); color: var(--ink-3); }
+
+.control {
+  appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  padding: 0.5rem 0.7rem;
+  font-size: var(--t-small);
+  color: var(--ink);
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+  width: 100%;
+}
+.control:hover:not(:disabled) { border-color: var(--ink-3); }
+.control:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); outline: none; }
+.control:disabled { background: var(--sunken); color: var(--ink-3); cursor: not-allowed; }
+.control::placeholder { color: var(--ink-3); }
+
+select.control {
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+                    linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+  background-position: right 0.95rem center, right 0.7rem center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 2rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: 0.5rem 0.95rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--t-small);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--fast) var(--ease), transform var(--fast) var(--ease);
+}
+.btn:hover:not(:disabled) { background: var(--accent-hover); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-quiet {
+  background: transparent;
+  color: var(--ink-2);
+  border-color: var(--line-strong);
+}
+.btn-quiet:hover:not(:disabled) { background: var(--sunken); color: var(--ink); }
+
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: var(--sunken);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+}
+.segmented button {
+  border: 0;
+  background: transparent;
+  border-radius: 3px;
+  padding: 0.34rem 0.75rem;
+  font-size: var(--t-small);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.segmented button:hover { color: var(--ink); }
+.segmented button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 550;
+  box-shadow: var(--shadow-1);
+}
+
+/* ---------- Tables ---------- */
+
+.table-wrap { overflow-x: auto; }
+table.data { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+table.data th {
+  text-align: left;
+  font-weight: 550;
+  color: var(--ink-2);
+  font-size: var(--t-micro);
+  padding: var(--s3) var(--s4);
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+table.data td {
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+table.data tbody tr:last-child td { border-bottom: 0; }
+table.data tbody tr { transition: background var(--fast) var(--ease); }
+table.data tbody tr:hover { background: var(--paper); }
+table.data td.right, table.data th.right { text-align: right; }
+
+/* ---------- Risk band ---------- */
+
+.band {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--r-sm);
+  font-size: var(--t-micro);
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+}
+.band-Low { background: var(--low-wash); color: var(--low); border-color: rgba(47, 107, 70, 0.22); }
+.band-Medium { background: var(--medium-wash); color: var(--medium); border-color: rgba(154, 100, 21, 0.22); }
+.band-High { background: var(--high-wash); color: var(--high); border-color: rgba(160, 53, 53, 0.22); }
+
+.verdict {
+  display: grid;
+  gap: var(--s4);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: var(--s5);
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.verdict-prob {
+  font-size: 2.75rem;
+  font-weight: 550;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.verdict-action { color: var(--ink-2); font-size: var(--t-small); margin-top: var(--s2); }
+.verdict.is-Low .verdict-prob { color: var(--low); }
+.verdict.is-Medium .verdict-prob { color: var(--medium); }
+.verdict.is-High .verdict-prob { color: var(--high); }
+
+/* Threshold ruler: shows where this applicant sits between the two
+ * boundaries, because the number alone does not say how close a call it was. */
+.ruler { margin-top: var(--s5); }
+.ruler-track {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--low-wash), var(--medium-wash) 45%, var(--high-wash));
+  border: 1px solid var(--line);
+}
+.ruler-tick {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 1px;
+  background: var(--line-strong);
+}
+.ruler-pin {
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2.5px solid var(--ink);
+  transform: translate(-50%, -50%);
+  transition: left var(--mid) var(--ease);
+}
+.ruler-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+  margin-top: var(--s2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Disclosure ---------- */
+
+.disclosure { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.disclosure + .disclosure { margin-top: var(--s2); }
+.disclosure > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: var(--s3) var(--s4);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  font-size: var(--t-small);
+  font-weight: 500;
+  border-radius: var(--r);
+  transition: background var(--fast) var(--ease);
+}
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary:hover { background: var(--paper); }
+.disclosure[open] > summary { border-bottom: 1px solid var(--line); border-radius: var(--r) var(--r) 0 0; }
+.disclosure .disclosure-body { padding: var(--s4); }
+.chev { transition: transform var(--fast) var(--ease); color: var(--ink-3); flex: none; }
+.disclosure[open] .chev { transform: rotate(90deg); }
+
+/* ---------- Chat ---------- */
+
+.chat { display: flex; flex-direction: column; gap: var(--s4); }
+.turn { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: var(--s4); }
+.turn-who {
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+  padding-top: 0.28rem;
+  text-align: right;
+}
+.turn-body { min-width: 0; display: flex; flex-direction: column; gap: var(--s3); }
+.turn-said { color: var(--ink); }
+
+/* A refusal is not an error and not an answer. It gets its own surface so the
+ * difference is legible at a glance, which is the whole point of refusing. */
+.refusal {
+  border: 1px solid rgba(154, 100, 21, 0.28);
+  background: var(--medium-wash);
+  border-radius: var(--r);
+  padding: var(--s4);
+}
+.refusal-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-weight: 550;
+  color: var(--medium);
+  font-size: var(--t-small);
+  margin-bottom: var(--s2);
+}
+.refusal p { color: #6f4a11; }
+.refusal .suggest { margin-top: var(--s3); font-size: var(--t-small); color: #6f4a11; }
+.refusal .suggest b { font-weight: 550; }
+
+pre.sql {
+  margin: 0;
+  padding: var(--s4);
+  background: #1c1d21;
+  color: #e6e4e0;
+  border-radius: var(--r-sm);
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.composer { display: flex; gap: var(--s3); align-items: flex-end; margin-top: var(--s5); }
+.composer textarea { resize: none; min-height: 44px; max-height: 160px; }
+
+.prompt-chips { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
+.chip {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: var(--t-micro);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- States ---------- */
+
+.skeleton {
+  background: linear-gradient(90deg, var(--sunken) 25%, var(--panel) 37%, var(--sunken) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--r-sm);
+}
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+
+.notice {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: var(--s5);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: var(--t-small);
+}
+.notice.is-error { border-color: rgba(160, 53, 53, 0.3); background: var(--high-wash); color: #7d2a2a; }
+.notice h3 { margin-bottom: var(--s2); color: inherit; }
+
+.spin { animation: spin 900ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Grids ---------- */
+
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s5); }
+.split-wide { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: var(--s5); }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--s4); }
+
+.insight + .insight { margin-top: var(--s2); }
+.insight-finding { color: var(--ink); }
+.insight-sowhat { color: var(--ink-2); font-size: var(--t-small); margin-top: var(--s3); }
+.insight-sowhat b { font-weight: 550; color: var(--ink); }
+
+.rule-cond { color: var(--ink); max-width: 54ch; }
+.lift { font-family: var(--font-mono); font-size: 0.8125rem; }
+.lift.is-up { color: var(--high); }
+.lift.is-down { color: var(--low); }
+
+@media (max-width: 1080px) {
+  .split, .split-wide { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .rail {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--s4);
+    overflow-x: auto;
+    padding: var(--s3) var(--s4);
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .rail-nav { flex-direction: row; }
+  .rail-item span { white-space: nowrap; }
+  .rail-foot { display: none; }
+  .main { padding: var(--s5) var(--s4) var(--s7); }
+  .verdict { grid-template-columns: minmax(0, 1fr); }
+  .turn { grid-template-columns: minmax(0, 1fr); gap: var(--s2); }
+  .turn-who { text-align: left; padding-top: 0; }
+}
+
+/* Range inputs. The browser default ships a blue thumb that belongs to no
+ * design system, and these sit directly beside themed selects and buttons, so
+ * leaving them is the most visible inconsistency on the page. */
+input[type="range"].control {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 0;
+  height: 34px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+input[type="range"].control:focus-visible { box-shadow: none; }
+input[type="range"].control:hover:not(:disabled) { border-color: transparent; }
+
+input[type="range"].control::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong);
+}
+input[type="range"].control::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  margin-top: -5.5px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-1);
+  transition: transform var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+input[type="range"].control:hover::-webkit-slider-thumb { transform: scale(1.12); }
+input[type="range"].control:active::-webkit-slider-thumb { transform: scale(0.96); }
+input[type="range"].control:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+input[type="range"].control::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong);
+}
+input[type="range"].control::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-1);
+}
+input[type="range"].control:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+/* Number inputs: the spinner arrows are browser chrome nobody asked for, and
+ * these fields are adjusted by typing. */
+input[type="number"].control::-webkit-outer-spin-button,
+input[type="number"].control::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"].control { -moz-appearance: textfield; }
+
+/* Charts on narrow viewports.
+ *
+ * Recharts' ResponsiveContainer narrows its box but was measured here still
+ * drawing a wider surface inside it, which clips the plot instead of reflowing
+ * it. Rather than depend on that behaviour, chart blocks get their own
+ * horizontal scroll below the rail breakpoint. A chart the reader can pan is
+ * honest; a chart silently cropped at the container edge is not.
+ */
+@media (width <= 860px) {
+  .chart-scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+}
