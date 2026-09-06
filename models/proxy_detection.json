@@ -1,0 +1,547 @@
+{
+  "generated_at": "2026-09-06T12:59:36.504654+00:00",
+  "rows": 307511,
+  "features_scanned": 120,
+  "protected_attributes": [
+    "code_gender",
+    "name_family_status",
+    "age_years",
+    "cnt_children",
+    "cnt_fam_members"
+  ],
+  "thresholds": {
+    "material": 0.2,
+    "strong": 0.5,
+    "min_level_size": 100,
+    "note": "Fixed in the module before the first run. MATERIAL is the conventional floor for a small but non-negligible effect (about 4% of the attribute explained by one feature); STRONG is about 25%. Choosing a cutoff after seeing the ranking would make it a description of the output, not a standard."
+  },
+  "scale": "association is a common 0..1 correlation-like scale: |Spearman rho| for numeric-numeric, sqrt(eta squared) for numeric-categorical, and Cramer's V (bias-corrected) for categorical-categorical. The raw statistic and its name are reported alongside.",
+  "attributes": {
+    "code_gender": {
+      "features_scored": 120,
+      "material_count": 5,
+      "strong_count": 1,
+      "material": [
+        {
+          "feature": "occupation_type",
+          "statistic": "cramers_v",
+          "value": 0.572155,
+          "association": 0.572155
+        },
+        {
+          "feature": "flag_own_car",
+          "statistic": "cramers_v",
+          "value": 0.345844,
+          "association": 0.345844
+        },
+        {
+          "feature": "organization_type",
+          "statistic": "cramers_v",
+          "value": 0.337082,
+          "association": 0.337082
+        },
+        {
+          "feature": "ext_source_1",
+          "statistic": "eta_squared",
+          "value": 0.094088,
+          "association": 0.306737
+        },
+        {
+          "feature": "flag_document_8",
+          "statistic": "eta_squared",
+          "value": 0.0624,
+          "association": 0.2498
+        }
+      ],
+      "top_10": [
+        {
+          "feature": "occupation_type",
+          "statistic": "cramers_v",
+          "value": 0.572155,
+          "association": 0.572155
+        },
+        {
+          "feature": "flag_own_car",
+          "statistic": "cramers_v",
+          "value": 0.345844,
+          "association": 0.345844
+        },
+        {
+          "feature": "organization_type",
+          "statistic": "cramers_v",
+          "value": 0.337082,
+          "association": 0.337082
+        },
+        {
+          "feature": "ext_source_1",
+          "statistic": "eta_squared",
+          "value": 0.094088,
+          "association": 0.306737
+        },
+        {
+          "feature": "flag_document_8",
+          "statistic": "eta_squared",
+          "value": 0.0624,
+          "association": 0.2498
+        },
+        {
+          "feature": "name_income_type",
+          "statistic": "cramers_v",
+          "value": 0.169642,
+          "association": 0.169642
+        },
+        {
+          "feature": "days_employed_anomalous",
+          "statistic": "eta_squared",
+          "value": 0.024746,
+          "association": 0.15731
+        },
+        {
+          "feature": "flag_emp_phone",
+          "statistic": "eta_squared",
+          "value": 0.024726,
+          "association": 0.157245
+        },
+        {
+          "feature": "reg_city_not_work_city",
+          "statistic": "eta_squared",
+          "value": 0.018927,
+          "association": 0.137577
+        },
+        {
+          "feature": "live_city_not_work_city",
+          "statistic": "eta_squared",
+          "value": 0.017761,
+          "association": 0.133271
+        }
+      ]
+    },
+    "name_family_status": {
+      "features_scored": 120,
+      "material_count": 2,
+      "strong_count": 0,
+      "material": [
+        {
+          "feature": "days_employed_anomalous",
+          "statistic": "eta_squared",
+          "value": 0.062903,
+          "association": 0.250804
+        },
+        {
+          "feature": "flag_emp_phone",
+          "statistic": "eta_squared",
+          "value": 0.062881,
+          "association": 0.250761
+        }
+      ],
+      "top_10": [
+        {
+          "feature": "days_employed_anomalous",
+          "statistic": "eta_squared",
+          "value": 0.062903,
+          "association": 0.250804
+        },
+        {
+          "feature": "flag_emp_phone",
+          "statistic": "eta_squared",
+          "value": 0.062881,
+          "association": 0.250761
+        },
+        {
+          "feature": "ext_source_1",
+          "statistic": "eta_squared",
+          "value": 0.035916,
+          "association": 0.189514
+        },
+        {
+          "feature": "flag_document_6",
+          "statistic": "eta_squared",
+          "value": 0.029264,
+          "association": 0.171068
+        },
+        {
+          "feature": "flag_own_car",
+          "statistic": "cramers_v",
+          "value": 0.167858,
+          "association": 0.167858
+        },
+        {
+          "feature": "credit_income_ratio",
+          "statistic": "eta_squared",
+          "value": 0.024045,
+          "association": 0.155065
+        },
+        {
+          "feature": "amt_goods_price",
+          "statistic": "eta_squared",
+          "value": 0.023509,
+          "association": 0.153326
+        },
+        {
+          "feature": "annuity_income_ratio",
+          "statistic": "eta_squared",
+          "value": 0.022268,
+          "association": 0.149225
+        },
+        {
+          "feature": "amt_credit",
+          "statistic": "eta_squared",
+          "value": 0.022266,
+          "association": 0.149218
+        },
+        {
+          "feature": "name_income_type",
+          "statistic": "cramers_v",
+          "value": 0.146641,
+          "association": 0.146641
+        }
+      ]
+    },
+    "age_years": {
+      "features_scored": 120,
+      "material_count": 12,
+      "strong_count": 5,
+      "material": [
+        {
+          "feature": "organization_type",
+          "statistic": "eta_squared",
+          "value": 0.405572,
+          "association": 0.636846
+        },
+        {
+          "feature": "name_income_type",
+          "statistic": "eta_squared",
+          "value": 0.384955,
+          "association": 0.620448
+        },
+        {
+          "feature": "ext_source_1",
+          "statistic": "spearman_rho",
+          "value": 0.600176,
+          "association": 0.600176
+        },
+        {
+          "feature": "days_employed_anomalous",
+          "statistic": "spearman_rho",
+          "value": 0.599606,
+          "association": 0.599606
+        },
+        {
+          "feature": "flag_emp_phone",
+          "statistic": "spearman_rho",
+          "value": -0.599551,
+          "association": 0.599551
+        },
+        {
+          "feature": "flag_document_6",
+          "statistic": "spearman_rho",
+          "value": 0.392842,
+          "association": 0.392842
+        },
+        {
+          "feature": "days_employed",
+          "statistic": "spearman_rho",
+          "value": -0.307446,
+          "association": 0.307446
+        },
+        {
+          "feature": "days_registration",
+          "statistic": "spearman_rho",
+          "value": -0.295277,
+          "association": 0.295277
+        },
+        {
+          "feature": "days_id_publish",
+          "statistic": "spearman_rho",
+          "value": -0.263828,
+          "association": 0.263828
+        },
+        {
+          "feature": "name_housing_type",
+          "statistic": "eta_squared",
+          "value": 0.060406,
+          "association": 0.245777
+        },
+        {
+          "feature": "reg_city_not_work_city",
+          "statistic": "spearman_rho",
+          "value": -0.23916,
+          "association": 0.23916
+        },
+        {
+          "feature": "ext_source_3",
+          "statistic": "spearman_rho",
+          "value": 0.205208,
+          "association": 0.205208
+        }
+      ],
+      "top_10": [
+        {
+          "feature": "organization_type",
+          "statistic": "eta_squared",
+          "value": 0.405572,
+          "association": 0.636846
+        },
+        {
+          "feature": "name_income_type",
+          "statistic": "eta_squared",
+          "value": 0.384955,
+          "association": 0.620448
+        },
+        {
+          "feature": "ext_source_1",
+          "statistic": "spearman_rho",
+          "value": 0.600176,
+          "association": 0.600176
+        },
+        {
+          "feature": "days_employed_anomalous",
+          "statistic": "spearman_rho",
+          "value": 0.599606,
+          "association": 0.599606
+        },
+        {
+          "feature": "flag_emp_phone",
+          "statistic": "spearman_rho",
+          "value": -0.599551,
+          "association": 0.599551
+        },
+        {
+          "feature": "flag_document_6",
+          "statistic": "spearman_rho",
+          "value": 0.392842,
+          "association": 0.392842
+        },
+        {
+          "feature": "days_employed",
+          "statistic": "spearman_rho",
+          "value": -0.307446,
+          "association": 0.307446
+        },
+        {
+          "feature": "days_registration",
+          "statistic": "spearman_rho",
+          "value": -0.295277,
+          "association": 0.295277
+        },
+        {
+          "feature": "days_id_publish",
+          "statistic": "spearman_rho",
+          "value": -0.263828,
+          "association": 0.263828
+        },
+        {
+          "feature": "name_housing_type",
+          "statistic": "eta_squared",
+          "value": 0.060406,
+          "association": 0.245777
+        }
+      ]
+    },
+    "cnt_children": {
+      "features_scored": 120,
+      "material_count": 4,
+      "strong_count": 0,
+      "material": [
+        {
+          "feature": "flag_emp_phone",
+          "statistic": "spearman_rho",
+          "value": 0.268037,
+          "association": 0.268037
+        },
+        {
+          "feature": "days_employed_anomalous",
+          "statistic": "spearman_rho",
+          "value": -0.268037,
+          "association": 0.268037
+        },
+        {
+          "feature": "organization_type",
+          "statistic": "eta_squared",
+          "value": 0.061643,
+          "association": 0.24828
+        },
+        {
+          "feature": "name_income_type",
+          "statistic": "eta_squared",
+          "value": 0.059259,
+          "association": 0.243432
+        }
+      ],
+      "top_10": [
+        {
+          "feature": "flag_emp_phone",
+          "statistic": "spearman_rho",
+          "value": 0.268037,
+          "association": 0.268037
+        },
+        {
+          "feature": "days_employed_anomalous",
+          "statistic": "spearman_rho",
+          "value": -0.268037,
+          "association": 0.268037
+        },
+        {
+          "feature": "organization_type",
+          "statistic": "eta_squared",
+          "value": 0.061643,
+          "association": 0.24828
+        },
+        {
+          "feature": "name_income_type",
+          "statistic": "eta_squared",
+          "value": 0.059259,
+          "association": 0.243432
+        },
+        {
+          "feature": "days_registration",
+          "statistic": "spearman_rho",
+          "value": 0.177285,
+          "association": 0.177285
+        },
+        {
+          "feature": "flag_document_6",
+          "statistic": "spearman_rho",
+          "value": -0.174973,
+          "association": 0.174973
+        },
+        {
+          "feature": "ext_source_1",
+          "statistic": "spearman_rho",
+          "value": -0.155203,
+          "association": 0.155203
+        },
+        {
+          "feature": "flag_own_car",
+          "statistic": "eta_squared",
+          "value": 0.010409,
+          "association": 0.102023
+        },
+        {
+          "feature": "reg_city_not_work_city",
+          "statistic": "spearman_rho",
+          "value": 0.0745,
+          "association": 0.0745
+        },
+        {
+          "feature": "live_city_not_work_city",
+          "statistic": "spearman_rho",
+          "value": 0.070351,
+          "association": 0.070351
+        }
+      ]
+    },
+    "cnt_fam_members": {
+      "features_scored": 120,
+      "material_count": 4,
+      "strong_count": 0,
+      "material": [
+        {
+          "feature": "organization_type",
+          "statistic": "eta_squared",
+          "value": 0.059452,
+          "association": 0.243829
+        },
+        {
+          "feature": "days_employed_anomalous",
+          "statistic": "spearman_rho",
+          "value": -0.240114,
+          "association": 0.240114
+        },
+        {
+          "feature": "flag_emp_phone",
+          "statistic": "spearman_rho",
+          "value": 0.240084,
+          "association": 0.240084
+        },
+        {
+          "feature": "name_income_type",
+          "statistic": "eta_squared",
+          "value": 0.056127,
+          "association": 0.236912
+        }
+      ],
+      "top_10": [
+        {
+          "feature": "organization_type",
+          "statistic": "eta_squared",
+          "value": 0.059452,
+          "association": 0.243829
+        },
+        {
+          "feature": "days_employed_anomalous",
+          "statistic": "spearman_rho",
+          "value": -0.240114,
+          "association": 0.240114
+        },
+        {
+          "feature": "flag_emp_phone",
+          "statistic": "spearman_rho",
+          "value": 0.240084,
+          "association": 0.240084
+        },
+        {
+          "feature": "name_income_type",
+          "statistic": "eta_squared",
+          "value": 0.056127,
+          "association": 0.236912
+        },
+        {
+          "feature": "flag_document_6",
+          "statistic": "spearman_rho",
+          "value": -0.161773,
+          "association": 0.161773
+        },
+        {
+          "feature": "days_registration",
+          "statistic": "spearman_rho",
+          "value": 0.156534,
+          "association": 0.156534
+        },
+        {
+          "feature": "flag_own_car",
+          "statistic": "eta_squared",
+          "value": 0.02247,
+          "association": 0.149901
+        },
+        {
+          "feature": "ext_source_1",
+          "statistic": "spearman_rho",
+          "value": -0.097894,
+          "association": 0.097894
+        },
+        {
+          "feature": "amt_annuity",
+          "statistic": "spearman_rho",
+          "value": 0.095778,
+          "association": 0.095778
+        },
+        {
+          "feature": "name_type_suite",
+          "statistic": "eta_squared",
+          "value": 0.007906,
+          "association": 0.088914
+        }
+      ]
+    }
+  },
+  "distinct_material_features": [
+    "days_employed",
+    "days_employed_anomalous",
+    "days_id_publish",
+    "days_registration",
+    "ext_source_1",
+    "ext_source_3",
+    "flag_document_6",
+    "flag_document_8",
+    "flag_emp_phone",
+    "flag_own_car",
+    "name_housing_type",
+    "name_income_type",
+    "occupation_type",
+    "organization_type",
+    "reg_city_not_work_city"
+  ],
+  "distinct_material_count": 15,
+  "limitation": "Single-feature association only. A model combines 120 features, and columns individually below the threshold can jointly reconstruct an attribute none of them predicts alone. Fitting a model to predict each attribute from the full matrix would bound that, and is not done here."
+}

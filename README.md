@@ -90,6 +90,7 @@ restructure, the following were added:
 | `src/ml/explain.py` | SHAP values per prediction (Part 4) |
 | `src/ml/rules.py` | Rule derivation module (listed under expected deliverables) |
 | `src/ml/fairness_audit.py` | Disparate impact screen against the served model. Not required; see **Fair lending** |
+| `src/ml/proxy_detection.py` | Scores all 120 features against each excluded attribute. Not required; see **Fair lending** |
 | `app/` | FastAPI layer, so the UI holds no business logic and stays replaceable |
 | `frontend/` | Part 5 requires a UI; the tree names no location for one |
 | `configs/` | Training and application configuration, plus the column glossary |
@@ -247,6 +248,7 @@ python -m src.ml.train             # 5-fold CV, both models, SHAP, rules
 python -m src.ml.train --quick     # single split, about 60 seconds
 python -m src.ml.train --fairness  # cost of excluding protected attributes
 python -m src.ml.fairness_audit    # disparate impact screen, no retrain
+python -m src.ml.proxy_detection   # single-feature proxy scan
 pytest                             # 121 tests, no database needed
 
 uvicorn app.main:app --reload
@@ -439,6 +441,7 @@ python -m src.ml.train --quick      # single split, LightGBM only, about 60 seco
 python -m src.ml.train --artifacts  # rebuild SHAP and rules from the saved model
 python -m src.ml.train --fairness   # cost of excluding the protected attributes
 python -m src.ml.fairness_audit     # disparate impact screen, no retrain
+python -m src.ml.proxy_detection    # which features reconstruct a protected attribute
 ```
 
 `fairness_audit` reads the saved model rather than fitting one, so it takes seconds and does
@@ -486,21 +489,96 @@ This was found by looking at the SHAP output and seeing `code_gender` among the 
 individual credit decision. It is recorded here because noticing it is the point: a model can
 be accurate, explainable, well tested, and still illegal to deploy.
 
-### Residual proxies, not excluded
+### Residual proxies: measured, not guessed at
 
-Removing a protected attribute does not make a model fair. It removes the most obvious defect.
-These remain and are genuine risks:
+Removing a protected attribute does not make a model fair. It removes the label, not the
+information. An earlier version of this section listed four columns that seemed likely to
+carry protected signal. That list was a guess, and it has been replaced by a measurement.
 
-- **`name_income_type`** contains the values `Maternity leave` and `Pensioner`, which are
-  proxies for sex and age respectively. The column carries real, legitimate signal about
-  income stability, so it is kept, but a production system would need to demonstrate that its
-  use is not a pretext.
-- **`occupation_type` and `organization_type`** correlate with sex and national origin in most
-  labour markets.
-- **`region_rating_client` and `region_population_relative`** are geographic and therefore
-  carry redlining risk, the classic proxy failure in credit.
-- **`days_employed`** correlates with age, though it measures something a lender may
-  legitimately consider.
+```bash
+POSTGRES_HOST=localhost python -m src.ml.proxy_detection
+```
+
+Every one of the 120 features the model receives is scored against each of the five excluded
+attributes, over all 307,511 applicants. The statistic depends on the pair of types — Spearman
+rho for numeric against numeric, the correlation ratio (eta squared) for numeric against
+categorical, bias-corrected Cramér's V for categorical against categorical — and all three are
+reported on a common 0–1 correlation-like scale so they can be ranked together. Results go to
+`models/proxy_detection.json`.
+
+**The thresholds were fixed in the module before the first run**, because a cutoff chosen after
+seeing the ranking describes the output rather than judging it. A feature is **material** at
+0.20, where it explains roughly 4% of the attribute on its own, and **strong** at 0.50, roughly
+25%.
+
+**Fifteen distinct features are a material proxy for at least one excluded attribute.** The
+guessed list named four columns and got two of them right.
+
+| Excluded attribute | Material | Strong | Strongest single proxy |
+|--------------------|---------|--------|------------------------|
+| `age_years` | **12** | **5** | `organization_type`, 0.637 |
+| `code_gender` | 5 | 1 | `occupation_type`, 0.572 |
+| `cnt_children` | 4 | 0 | `flag_emp_phone`, 0.268 |
+| `cnt_fam_members` | 4 | 0 | `organization_type`, 0.244 |
+| `name_family_status` | 2 | 0 | `days_employed_anomalous`, 0.251 |
+
+Age is the badly leaking one. Twelve features carry material age signal and five of them are
+strong:
+
+| Feature | Association with age | Statistic |
+|---------|---------------------|-----------|
+| `organization_type` | **0.637** | eta² = 0.406 |
+| `name_income_type` | **0.620** | eta² = 0.385 |
+| `ext_source_1` | **0.600** | rho = 0.600 |
+| `days_employed_anomalous` | **0.600** | rho = 0.600 |
+| `flag_emp_phone` | **0.600** | rho = −0.600 |
+| `flag_document_6` | 0.393 | rho = 0.393 |
+| `days_employed` | 0.307 | rho = −0.307 |
+| `days_registration` | 0.295 | rho = −0.295 |
+| `days_id_publish` | 0.264 | rho = −0.264 |
+| `name_housing_type` | 0.246 | eta² = 0.060 |
+| `reg_city_not_work_city` | 0.239 | rho = −0.239 |
+| `ext_source_3` | 0.205 | rho = 0.205 |
+
+`ext_source_1` at 0.600 is the uncomfortable one. It is the third most important feature in the
+model and it reconstructs age better than `days_employed` does. Whatever the external bureau is
+scoring, age is a large part of it, and excluding age from this model does not exclude it from
+theirs.
+
+#### The two methods find different things, and neither is sufficient
+
+This is the result worth taking away, and it is more useful than a longer list of proxies.
+
+**The systematic pass would not have found `employed_life_ratio`.** Its association with age is
+**0.074**, well below the 0.20 material floor and nowhere near the table above. Yet the section
+below demonstrates it carrying age into the score with a clean causal experiment. Association
+asks "how well does this feature predict the attribute", and a ratio whose numerator varies
+freely predicts age poorly while still transmitting it. Those are different questions.
+
+**Hand-inspection would not have found the twelve.** It found one leak, by noticing that a form
+field which should have been inert moved a score. It did not find `organization_type`,
+`name_income_type` or `ext_source_1`, all of which are stronger channels.
+
+So the honest position is stronger than the earlier text and in a different direction. It is not
+that there were more leaks than suspected, though there were. It is that **a single detection
+method is not enough**: the statistical pass and the counterfactual sweep each catch what the
+other misses, and only running both produced the full picture.
+
+One guess did not survive. `own_car_age` was listed as a likely age carrier and measures
+**0.021** — no material relationship at all.
+
+Two of the guesses held up. `name_income_type` is a strong age proxy at 0.620, as expected from
+its `Pensioner` value; `occupation_type` is the strongest gender proxy at 0.572. Both carry real
+signal about income stability and are kept, and a production system would have to demonstrate
+that keeping them is not a pretext. The geographic columns, `region_rating_client` and
+`region_population_relative`, remain a redlining risk on their face regardless of what they
+correlate with here.
+
+**What this pass does not do.** It measures one feature at a time. A model combines 120 of them,
+and features individually below 0.20 can jointly reconstruct an attribute none of them predicts
+alone — which is exactly how `employed_life_ratio` escapes it. Bounding that means fitting a
+model to predict each protected attribute from the whole matrix and reporting its accuracy. That
+is still not done, and it is now the specific remaining gap rather than a general one.
 
 #### `employed_life_ratio`: a protected attribute re-entering through a derived feature
 
@@ -667,10 +745,11 @@ Excluding the attributes is the floor, not the bar:
 - **Business-necessity analysis.** The screen above found two failing ratios and cannot say
   whether either is justified. This is the missing half of a disparate impact review and the
   largest gap in the fair-lending work here.
-- **Proxy detection.** Fit a model to predict each protected attribute from the remaining
-  features. High accuracy means the model can reconstruct it regardless of exclusion. The
-  `employed_life_ratio` leak above is a worked example of what this pass is for, and of the
-  fact that finding one such path by hand does not bound how many remain.
+- **Multivariate proxy detection.** The single-feature pass above is done and found fifteen
+  material proxies. What remains is the joint version: fit a model to predict each protected
+  attribute from the whole feature matrix and report its accuracy. Features individually below
+  the threshold can reconstruct an attribute together, and `employed_life_ratio` at 0.074 is
+  the proof that they do.
 - **Adverse action reason codes.** ECOA requires a declined applicant to be told why. The SHAP
   contributions are the right raw material, but they need mapping to a fixed, reviewed set of
   reasons, not free-generated text.
