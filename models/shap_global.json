@@ -1,536 +1,538 @@
 {
-  "sampled_rows": 2000,
+  "sampled_rows": 307511,
   "total_rows": 307511,
+  "exhaustive": true,
+  "chunk_rows": 20000,
   "features": [
     {
       "feature": "ext_source_3",
       "label": "external credit score 3",
-      "mean_abs_shap": 0.36598420961355904
+      "mean_abs_shap": 0.36976268909514426
     },
     {
       "feature": "ext_source_2",
       "label": "external credit score 2",
-      "mean_abs_shap": 0.34000115144567955
+      "mean_abs_shap": 0.34311607286869866
     },
     {
       "feature": "credit_term",
       "label": "loan term",
-      "mean_abs_shap": 0.19923264993658962
+      "mean_abs_shap": 0.20287332795870144
     },
     {
       "feature": "ext_source_1",
       "label": "external credit score 1",
-      "mean_abs_shap": 0.17581867470177834
+      "mean_abs_shap": 0.1766022859337759
     },
     {
       "feature": "amt_goods_price",
       "label": "price of the goods financed",
-      "mean_abs_shap": 0.15155271414229088
+      "mean_abs_shap": 0.15220236385530095
     },
     {
       "feature": "organization_type",
       "label": "employer type",
-      "mean_abs_shap": 0.124460779604999
+      "mean_abs_shap": 0.130157880589455
     },
     {
       "feature": "days_employed",
       "label": "length of employment",
-      "mean_abs_shap": 0.09663479289125285
+      "mean_abs_shap": 0.09612689346927103
     },
     {
       "feature": "own_car_age",
       "label": "age of car owned",
-      "mean_abs_shap": 0.09303424523771041
+      "mean_abs_shap": 0.09296786711860412
     },
     {
       "feature": "amt_annuity",
       "label": "annual repayment",
-      "mean_abs_shap": 0.09056171255350598
+      "mean_abs_shap": 0.0913796340627259
     },
     {
       "feature": "name_education_type",
       "label": "education level",
-      "mean_abs_shap": 0.08678632518315682
+      "mean_abs_shap": 0.08761610456020284
     },
     {
       "feature": "occupation_type",
       "label": "occupation",
-      "mean_abs_shap": 0.08388663877636514
+      "mean_abs_shap": 0.08389063544348901
     },
     {
       "feature": "amt_credit",
       "label": "loan amount",
-      "mean_abs_shap": 0.08076702320173713
+      "mean_abs_shap": 0.08112833377139272
     },
     {
       "feature": "name_contract_type",
       "label": "contract type",
-      "mean_abs_shap": 0.058321856719796866
+      "mean_abs_shap": 0.06210816812164227
     },
     {
       "feature": "days_id_publish",
       "label": "time since ID was issued",
-      "mean_abs_shap": 0.04525174755969512
+      "mean_abs_shap": 0.04649203273554271
     },
     {
       "feature": "days_last_phone_change",
       "label": "time since last phone change",
-      "mean_abs_shap": 0.039472726354367965
+      "mean_abs_shap": 0.03896728852875273
     },
     {
       "feature": "amt_req_credit_bureau_year",
       "label": "amt req credit bureau year",
-      "mean_abs_shap": 0.03737682723227723
+      "mean_abs_shap": 0.03701499606237845
     },
     {
       "feature": "amt_req_credit_bureau_qrt",
       "label": "amt req credit bureau qrt",
-      "mean_abs_shap": 0.0365609629918712
+      "mean_abs_shap": 0.03587855311340071
     },
     {
       "feature": "employed_life_ratio",
       "label": "share of life spent in current employment",
-      "mean_abs_shap": 0.03401257450030724
+      "mean_abs_shap": 0.03383004627053309
     },
     {
       "feature": "flag_document_3",
       "label": "flag document 3",
-      "mean_abs_shap": 0.02970282909429311
+      "mean_abs_shap": 0.030293485528962147
     },
     {
       "feature": "region_rating_client_w_city",
       "label": "region rating including city",
-      "mean_abs_shap": 0.02850729605708898
-    },
-    {
-      "feature": "def_30_cnt_social_circle",
-      "label": "def 30 cnt social circle",
-      "mean_abs_shap": 0.02827602158572103
+      "mean_abs_shap": 0.02951495958046436
     },
     {
       "feature": "region_population_relative",
       "label": "region affluence",
-      "mean_abs_shap": 0.02775633658551883
+      "mean_abs_shap": 0.02828490521395211
+    },
+    {
+      "feature": "def_30_cnt_social_circle",
+      "label": "def 30 cnt social circle",
+      "mean_abs_shap": 0.02800566542303864
     },
     {
       "feature": "weekday_appr_process_start",
       "label": "weekday appr process start",
-      "mean_abs_shap": 0.026416168603175975
+      "mean_abs_shap": 0.026288152271619257
     },
     {
       "feature": "flag_work_phone",
       "label": "flag work phone",
-      "mean_abs_shap": 0.024022768066801124
+      "mean_abs_shap": 0.023708116106297628
     },
     {
       "feature": "annuity_income_ratio",
       "label": "repayment burden relative to income",
-      "mean_abs_shap": 0.021479423031580798
+      "mean_abs_shap": 0.021734509460881395
     },
     {
       "feature": "days_registration",
       "label": "time since registration",
-      "mean_abs_shap": 0.01997792054425413
-    },
-    {
-      "feature": "amt_income_total",
-      "label": "annual income",
-      "mean_abs_shap": 0.019058742895824075
+      "mean_abs_shap": 0.020318276138862324
     },
     {
       "feature": "hour_appr_process_start",
       "label": "hour appr process start",
-      "mean_abs_shap": 0.018745069174305237
+      "mean_abs_shap": 0.020053975569137537
+    },
+    {
+      "feature": "amt_income_total",
+      "label": "annual income",
+      "mean_abs_shap": 0.01916578157495492
     },
     {
       "feature": "name_income_type",
       "label": "income type",
-      "mean_abs_shap": 0.017883654365629737
+      "mean_abs_shap": 0.018514997382355007
     },
     {
       "feature": "credit_income_ratio",
       "label": "loan size relative to income",
-      "mean_abs_shap": 0.014665228628268235
+      "mean_abs_shap": 0.0147678314931234
     },
     {
       "feature": "wallsmaterial_mode",
       "label": "wallsmaterial mode",
-      "mean_abs_shap": 0.014614721695256749
-    },
-    {
-      "feature": "def_60_cnt_social_circle",
-      "label": "def 60 cnt social circle",
-      "mean_abs_shap": 0.01426370525006502
+      "mean_abs_shap": 0.014624799957227022
     },
     {
       "feature": "totalarea_mode",
       "label": "totalarea mode",
-      "mean_abs_shap": 0.014075522180090363
+      "mean_abs_shap": 0.014549676994233726
     },
     {
       "feature": "flag_phone",
       "label": "flag phone",
-      "mean_abs_shap": 0.01401146516506347
+      "mean_abs_shap": 0.014303954427538406
+    },
+    {
+      "feature": "def_60_cnt_social_circle",
+      "label": "def 60 cnt social circle",
+      "mean_abs_shap": 0.013858168833895932
     },
     {
       "feature": "reg_city_not_live_city",
       "label": "reg city not live city",
-      "mean_abs_shap": 0.013796357116969334
+      "mean_abs_shap": 0.013019691868016556
     },
     {
       "feature": "name_type_suite",
       "label": "name type suite",
-      "mean_abs_shap": 0.009168465072704017
-    },
-    {
-      "feature": "apartments_mode",
-      "label": "apartments mode",
-      "mean_abs_shap": 0.00847681885925368
-    },
-    {
-      "feature": "name_housing_type",
-      "label": "name housing type",
-      "mean_abs_shap": 0.00833210301699191
+      "mean_abs_shap": 0.009165705904374596
     },
     {
       "feature": "years_beginexpluatation_mode",
       "label": "years beginexpluatation mode",
-      "mean_abs_shap": 0.008233034983029863
+      "mean_abs_shap": 0.008805783515655047
+    },
+    {
+      "feature": "apartments_mode",
+      "label": "apartments mode",
+      "mean_abs_shap": 0.008493686804113908
+    },
+    {
+      "feature": "name_housing_type",
+      "label": "name housing type",
+      "mean_abs_shap": 0.008092811408201925
     },
     {
       "feature": "fondkapremont_mode",
       "label": "fondkapremont mode",
-      "mean_abs_shap": 0.007640461478248621
-    },
-    {
-      "feature": "flag_document_16",
-      "label": "flag document 16",
-      "mean_abs_shap": 0.007406660530823414
-    },
-    {
-      "feature": "basementarea_avg",
-      "label": "basementarea avg",
-      "mean_abs_shap": 0.006663855164456561
-    },
-    {
-      "feature": "obs_60_cnt_social_circle",
-      "label": "obs 60 cnt social circle",
-      "mean_abs_shap": 0.006390150917996518
+      "mean_abs_shap": 0.007711256154302686
     },
     {
       "feature": "years_beginexpluatation_medi",
       "label": "years beginexpluatation medi",
-      "mean_abs_shap": 0.006296490521457405
+      "mean_abs_shap": 0.006786564645574349
+    },
+    {
+      "feature": "flag_document_16",
+      "label": "flag document 16",
+      "mean_abs_shap": 0.006616971301054684
+    },
+    {
+      "feature": "basementarea_avg",
+      "label": "basementarea avg",
+      "mean_abs_shap": 0.006608349098206864
     },
     {
       "feature": "flag_own_car",
       "label": "owns a car",
-      "mean_abs_shap": 0.006267031389993319
+      "mean_abs_shap": 0.006164732609712611
+    },
+    {
+      "feature": "obs_60_cnt_social_circle",
+      "label": "obs 60 cnt social circle",
+      "mean_abs_shap": 0.0061005542808519496
     },
     {
       "feature": "apartments_medi",
       "label": "apartments medi",
-      "mean_abs_shap": 0.005376022912936569
-    },
-    {
-      "feature": "nonlivingarea_mode",
-      "label": "nonlivingarea mode",
-      "mean_abs_shap": 0.005337999506645595
-    },
-    {
-      "feature": "basementarea_mode",
-      "label": "basementarea mode",
-      "mean_abs_shap": 0.005073815708705349
+      "mean_abs_shap": 0.005633624160241697
     },
     {
       "feature": "floorsmax_mode",
       "label": "floorsmax mode",
-      "mean_abs_shap": 0.00503655193294847
+      "mean_abs_shap": 0.005314650927818994
+    },
+    {
+      "feature": "nonlivingarea_mode",
+      "label": "nonlivingarea mode",
+      "mean_abs_shap": 0.005129956777569348
+    },
+    {
+      "feature": "basementarea_mode",
+      "label": "basementarea mode",
+      "mean_abs_shap": 0.005002031317722467
     },
     {
       "feature": "floorsmax_avg",
       "label": "floorsmax avg",
-      "mean_abs_shap": 0.00478334170931308
+      "mean_abs_shap": 0.004864028648552576
     },
     {
       "feature": "livingarea_avg",
       "label": "livingarea avg",
-      "mean_abs_shap": 0.0046671555650719225
+      "mean_abs_shap": 0.004720287198362628
     },
     {
       "feature": "entrances_avg",
       "label": "entrances avg",
-      "mean_abs_shap": 0.004556647815934717
-    },
-    {
-      "feature": "commonarea_medi",
-      "label": "commonarea medi",
-      "mean_abs_shap": 0.0044482870467147185
-    },
-    {
-      "feature": "years_build_mode",
-      "label": "years build mode",
-      "mean_abs_shap": 0.004426871167036732
-    },
-    {
-      "feature": "landarea_avg",
-      "label": "landarea avg",
-      "mean_abs_shap": 0.004322505880956945
+      "mean_abs_shap": 0.00453464162384492
     },
     {
       "feature": "apartments_avg",
       "label": "apartments avg",
-      "mean_abs_shap": 0.00428335799964078
+      "mean_abs_shap": 0.00446559589925544
     },
     {
-      "feature": "flag_document_18",
-      "label": "flag document 18",
-      "mean_abs_shap": 0.004034466518635682
-    },
-    {
-      "feature": "amt_req_credit_bureau_mon",
-      "label": "amt req credit bureau mon",
-      "mean_abs_shap": 0.0039556164139816245
-    },
-    {
-      "feature": "amt_req_credit_bureau_day",
-      "label": "amt req credit bureau day",
-      "mean_abs_shap": 0.003951991525138804
+      "feature": "landarea_avg",
+      "label": "landarea avg",
+      "mean_abs_shap": 0.0044532672621295285
     },
     {
       "feature": "years_beginexpluatation_avg",
       "label": "years beginexpluatation avg",
-      "mean_abs_shap": 0.0038655707954174923
+      "mean_abs_shap": 0.004199476509925417
+    },
+    {
+      "feature": "commonarea_medi",
+      "label": "commonarea medi",
+      "mean_abs_shap": 0.00416311572597283
+    },
+    {
+      "feature": "years_build_mode",
+      "label": "years build mode",
+      "mean_abs_shap": 0.004128546581189446
+    },
+    {
+      "feature": "amt_req_credit_bureau_day",
+      "label": "amt req credit bureau day",
+      "mean_abs_shap": 0.004007216844803906
+    },
+    {
+      "feature": "amt_req_credit_bureau_mon",
+      "label": "amt req credit bureau mon",
+      "mean_abs_shap": 0.004001532280470546
+    },
+    {
+      "feature": "flag_document_18",
+      "label": "flag document 18",
+      "mean_abs_shap": 0.003850390155362271
     },
     {
       "feature": "livingapartments_avg",
       "label": "livingapartments avg",
-      "mean_abs_shap": 0.00375937451083929
-    },
-    {
-      "feature": "amt_req_credit_bureau_week",
-      "label": "amt req credit bureau week",
-      "mean_abs_shap": 0.0035704905188526817
+      "mean_abs_shap": 0.0037842847619794268
     },
     {
       "feature": "nonlivingapartments_avg",
       "label": "nonlivingapartments avg",
-      "mean_abs_shap": 0.0035516751843628295
+      "mean_abs_shap": 0.00342089728595351
     },
     {
       "feature": "obs_30_cnt_social_circle",
       "label": "obs 30 cnt social circle",
-      "mean_abs_shap": 0.003447793805754744
-    },
-    {
-      "feature": "flag_document_13",
-      "label": "flag document 13",
-      "mean_abs_shap": 0.003374702488034839
-    },
-    {
-      "feature": "nonlivingarea_medi",
-      "label": "nonlivingarea medi",
-      "mean_abs_shap": 0.0033451709459217044
+      "mean_abs_shap": 0.0033355126212815194
     },
     {
       "feature": "landarea_mode",
       "label": "landarea mode",
-      "mean_abs_shap": 0.0032485753671275762
+      "mean_abs_shap": 0.0032902546819778755
     },
     {
-      "feature": "livingapartments_mode",
-      "label": "livingapartments mode",
-      "mean_abs_shap": 0.0031039524606597075
-    },
-    {
-      "feature": "commonarea_mode",
-      "label": "commonarea mode",
-      "mean_abs_shap": 0.0030718562973317005
+      "feature": "nonlivingarea_medi",
+      "label": "nonlivingarea medi",
+      "mean_abs_shap": 0.0032829236186390637
     },
     {
       "feature": "livingarea_mode",
       "label": "livingarea mode",
-      "mean_abs_shap": 0.0030641824304130016
+      "mean_abs_shap": 0.0032018380542666825
     },
     {
       "feature": "landarea_medi",
       "label": "landarea medi",
-      "mean_abs_shap": 0.0030568134539940223
+      "mean_abs_shap": 0.0031269242227126882
+    },
+    {
+      "feature": "amt_req_credit_bureau_week",
+      "label": "amt req credit bureau week",
+      "mean_abs_shap": 0.00307613874755858
     },
     {
       "feature": "basementarea_medi",
       "label": "basementarea medi",
-      "mean_abs_shap": 0.003015466506886208
+      "mean_abs_shap": 0.003032968602379607
     },
     {
-      "feature": "commonarea_avg",
-      "label": "commonarea avg",
-      "mean_abs_shap": 0.0029775149858638247
+      "feature": "commonarea_mode",
+      "label": "commonarea mode",
+      "mean_abs_shap": 0.0030291101429860572
+    },
+    {
+      "feature": "livingapartments_mode",
+      "label": "livingapartments mode",
+      "mean_abs_shap": 0.0029960298915269177
     },
     {
       "feature": "entrances_medi",
       "label": "entrances medi",
-      "mean_abs_shap": 0.0029433341353818565
+      "mean_abs_shap": 0.002961229700949979
+    },
+    {
+      "feature": "flag_document_13",
+      "label": "flag document 13",
+      "mean_abs_shap": 0.0029125648244147434
+    },
+    {
+      "feature": "commonarea_avg",
+      "label": "commonarea avg",
+      "mean_abs_shap": 0.0029056641867467644
     },
     {
       "feature": "livingarea_medi",
       "label": "livingarea medi",
-      "mean_abs_shap": 0.002763741993492587
+      "mean_abs_shap": 0.0027859063813084647
     },
     {
       "feature": "entrances_mode",
       "label": "entrances mode",
-      "mean_abs_shap": 0.0027305996343626915
+      "mean_abs_shap": 0.002692532541492849
     },
     {
       "feature": "flag_own_realty",
       "label": "owns property",
-      "mean_abs_shap": 0.002534481397856626
+      "mean_abs_shap": 0.002417015392303341
     },
     {
       "feature": "nonlivingarea_avg",
       "label": "nonlivingarea avg",
-      "mean_abs_shap": 0.002369671118250471
+      "mean_abs_shap": 0.0023999169766025924
     },
     {
       "feature": "floorsmin_avg",
       "label": "floorsmin avg",
-      "mean_abs_shap": 0.002350576258979455
+      "mean_abs_shap": 0.002187612178617062
     },
     {
       "feature": "region_rating_client",
       "label": "region rating",
-      "mean_abs_shap": 0.0022101595260884182
+      "mean_abs_shap": 0.0021654067720767753
     },
     {
       "feature": "livingapartments_medi",
       "label": "livingapartments medi",
-      "mean_abs_shap": 0.00218197847779028
+      "mean_abs_shap": 0.002139140159979156
     },
     {
       "feature": "years_build_medi",
       "label": "years build medi",
-      "mean_abs_shap": 0.002089438013938469
+      "mean_abs_shap": 0.0020187863919738772
     },
     {
       "feature": "flag_document_14",
       "label": "flag document 14",
-      "mean_abs_shap": 0.001828769733381758
-    },
-    {
-      "feature": "elevators_medi",
-      "label": "elevators medi",
-      "mean_abs_shap": 0.0016735414222832357
+      "mean_abs_shap": 0.0018534938124002704
     },
     {
       "feature": "elevators_avg",
       "label": "elevators avg",
-      "mean_abs_shap": 0.0015948422653105118
+      "mean_abs_shap": 0.0016231711819096766
+    },
+    {
+      "feature": "elevators_medi",
+      "label": "elevators medi",
+      "mean_abs_shap": 0.0016068251884257692
     },
     {
       "feature": "years_build_avg",
       "label": "years build avg",
-      "mean_abs_shap": 0.0015375765235525836
+      "mean_abs_shap": 0.0015733165787741028
     },
     {
       "feature": "floorsmin_mode",
       "label": "floorsmin mode",
-      "mean_abs_shap": 0.0015225421643613893
-    },
-    {
-      "feature": "nonlivingapartments_mode",
-      "label": "nonlivingapartments mode",
-      "mean_abs_shap": 0.0013523081021366125
+      "mean_abs_shap": 0.0013421526337950135
     },
     {
       "feature": "floorsmin_medi",
       "label": "floorsmin medi",
-      "mean_abs_shap": 0.0012682561368285983
+      "mean_abs_shap": 0.0013284472883866227
+    },
+    {
+      "feature": "nonlivingapartments_mode",
+      "label": "nonlivingapartments mode",
+      "mean_abs_shap": 0.0012842746066567285
     },
     {
       "feature": "reg_region_not_live_region",
       "label": "reg region not live region",
-      "mean_abs_shap": 0.0011114907670591798
+      "mean_abs_shap": 0.001165789836428037
     },
     {
       "feature": "floorsmax_medi",
       "label": "floorsmax medi",
-      "mean_abs_shap": 0.0009485650352133873
+      "mean_abs_shap": 0.0010121325233855465
     },
     {
       "feature": "live_city_not_work_city",
       "label": "live city not work city",
-      "mean_abs_shap": 0.0009484354850271974
+      "mean_abs_shap": 0.000981173082079371
     },
     {
       "feature": "nonlivingapartments_medi",
       "label": "nonlivingapartments medi",
-      "mean_abs_shap": 0.0009266168996326313
-    },
-    {
-      "feature": "flag_document_15",
-      "label": "flag document 15",
-      "mean_abs_shap": 0.0008614631903346397
+      "mean_abs_shap": 0.0008912974445036599
     },
     {
       "feature": "flag_email",
       "label": "flag email",
-      "mean_abs_shap": 0.0007523451555941267
+      "mean_abs_shap": 0.0007958141227202765
     },
     {
-      "feature": "flag_document_11",
-      "label": "flag document 11",
-      "mean_abs_shap": 0.000578747918682859
+      "feature": "flag_document_15",
+      "label": "flag document 15",
+      "mean_abs_shap": 0.0005516880312508867
     },
     {
       "feature": "elevators_mode",
       "label": "elevators mode",
-      "mean_abs_shap": 0.0005033144391173585
+      "mean_abs_shap": 0.0005036886260164319
+    },
+    {
+      "feature": "flag_document_11",
+      "label": "flag document 11",
+      "mean_abs_shap": 0.0004944675114505769
     },
     {
       "feature": "flag_document_8",
       "label": "flag document 8",
-      "mean_abs_shap": 0.0003800465640156748
+      "mean_abs_shap": 0.00031351182480086236
     },
     {
       "feature": "emergencystate_mode",
       "label": "emergencystate mode",
-      "mean_abs_shap": 0.0002980125016908395
+      "mean_abs_shap": 0.0002833885349596646
     },
     {
       "feature": "flag_document_6",
       "label": "flag document 6",
-      "mean_abs_shap": 0.00027568283093814036
+      "mean_abs_shap": 0.0002653498002029287
     },
     {
       "feature": "reg_city_not_work_city",
       "label": "reg city not work city",
-      "mean_abs_shap": 0.0002479336746630835
+      "mean_abs_shap": 0.0002531358645786275
     },
     {
       "feature": "reg_region_not_work_region",
       "label": "reg region not work region",
-      "mean_abs_shap": 0.00018264751846704664
+      "mean_abs_shap": 0.00016098519386362702
     },
     {
       "feature": "housetype_mode",
       "label": "housetype mode",
-      "mean_abs_shap": 9.141632445206956e-05
+      "mean_abs_shap": 0.000119799183736861
     },
     {
       "feature": "flag_document_5",
       "label": "flag document 5",
-      "mean_abs_shap": 7.808816184255885e-05
+      "mean_abs_shap": 8.549824426844948e-05
     },
     {
       "feature": "amt_req_credit_bureau_hour",
       "label": "amt req credit bureau hour",
-      "mean_abs_shap": 6.35467951736225e-05
+      "mean_abs_shap": 5.286932340517087e-05
     },
     {
       "feature": "live_region_not_work_region",
       "label": "live region not work region",
-      "mean_abs_shap": 1.469156400267758e-05
+      "mean_abs_shap": 2.13213133053586e-05
     },
     {
       "feature": "flag_mobil",

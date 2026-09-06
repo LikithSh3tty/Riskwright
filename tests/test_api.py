@@ -324,8 +324,8 @@ def test_explain_unknown_applicant_is_404(client, scored_applicant):
 def test_global_importance_shape(client):
     body = client.get("/explain/global").json()
 
-    assert body["sampled_rows"] == 2000
-    assert body["total_rows"] == 307511
+    # Global importance is exhaustive since v2.3: every applicant, not a sample.
+    assert body["sampled_rows"] == body["total_rows"] == 307511
     assert len(body["features"]) == 120
     assert {"feature", "mean_abs_shap"} <= set(body["features"][0])
 

@@ -93,6 +93,7 @@ restructure, the following were added:
 | `src/ml/proxy_detection.py` | Scores all 120 features against each excluded attribute. Not required; see **Fair lending** |
 | `src/ml/reason_codes.py` | ECOA adverse action reasons from the SHAP contributions. Not required; see **Explainability** |
 | `src/ml/threshold_sensitivity.py` | Sweeps the cost ratio to bound the threshold assumption. Not required; see **Model** |
+| `src/ml/shap_full.py` | Exhaustive global SHAP in chunks. Not required; see **Explainability** |
 | `app/` | FastAPI layer, so the UI holds no business logic and stays replaceable |
 | `frontend/` | Part 5 requires a UI; the tree names no location for one |
 | `configs/` | Training and application configuration, plus the column glossary |
@@ -498,6 +499,7 @@ python -m src.ml.train --fairness   # cost of excluding the protected attributes
 python -m src.ml.fairness_audit     # disparate impact screen, no retrain
 python -m src.ml.proxy_detection    # which features reconstruct a protected attribute
 python -m src.ml.threshold_sensitivity  # cost ratio sweep, no retrain
+python -m src.ml.shap_full          # exhaustive global SHAP, chunked
 ```
 
 `fairness_audit` reads the saved model rather than fitting one, so it takes seconds and does
@@ -844,9 +846,31 @@ Feature values are shown as a reader expects them. Date columns in this dataset 
 day offsets from the application date, so `days_birth = -9461` is rendered as an age of 25.9
 years rather than printed raw.
 
-Global importance is `mean(|SHAP|)` over a 2,000-row sample, computed once at training time
-and served from `models/shap_global.json`. The strongest drivers are the three external credit
-scores, loan term, and the price of the goods financed.
+Global importance is `mean(|SHAP|)` over **all 307,511 applicants**, served from
+`models/shap_global.json`. The strongest drivers are the three external credit scores, loan
+term, and the price of the goods financed.
+
+It was previously computed over a 2,000-row sample, and the README listed that as a limitation.
+
+```bash
+POSTGRES_HOST=localhost python -m src.ml.shap_full
+```
+
+`compute_global_importance` materialises the whole SHAP matrix at once, which is 2MB at 2,000
+rows and about 295MB at 307,511 — doubled while shap holds both classes, before anything is
+reduced. So `src/ml/shap_full.py` walks the population in 20,000-row chunks and keeps only a
+running sum of absolute SHAP per feature: 120 floats, whatever the row count. Peak memory is set
+by the chunk rather than by the dataset, and the result is exact rather than approximate,
+because a mean is a sum divided by a count.
+
+**The ranking did not change.** The top 20 features are in the identical order, the largest rank
+move anywhere in that range is zero, and the rank correlation across all 120 features is
+**0.9990**. The largest change in any single value is `organization_type`, from 0.12446 to
+0.13016 — under 0.006.
+
+That is a finding, not a null result: **the 2,000-row sample was adequate**, and the limitation
+the README carried was more cautious than it needed to be. Every SHAP figure previously quoted
+here was already correct. Comparison written to `models/shap_sample_comparison.json`.
 
 ### Adverse action reason codes
 
@@ -1301,7 +1325,10 @@ trust this.
 
 **Explainability**
 
-- Global SHAP importance is sampled at 2,000 rows, not exhaustive.
+- Global SHAP importance is now exhaustive: all 307,511 applicants, computed in chunks.
+  The previous 2,000-row sample produced an identical top-20 ordering and a rank
+  correlation of 0.9990 across all 120 features, so the sampling was never distorting
+  anything. Per-prediction SHAP was always exact.
 - SHAP values are in log-odds on the model's weighted scale. The probability is calibrated;
   the contributions describe direction and relative size, not percentage points.
 - The narrative is template-generated. It is reliable and cheap, and it will not phrase an

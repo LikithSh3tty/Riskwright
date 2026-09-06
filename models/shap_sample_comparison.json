@@ -1,0 +1,167 @@
+{
+  "generated_at": "2026-09-06T13:15:23.213819+00:00",
+  "sampled": {
+    "rows": 2000,
+    "top_10": [
+      "ext_source_3",
+      "ext_source_2",
+      "credit_term",
+      "ext_source_1",
+      "amt_goods_price",
+      "organization_type",
+      "days_employed",
+      "own_car_age",
+      "amt_annuity",
+      "name_education_type"
+    ]
+  },
+  "full": {
+    "rows": 307511,
+    "top_10": [
+      "ext_source_3",
+      "ext_source_2",
+      "credit_term",
+      "ext_source_1",
+      "amt_goods_price",
+      "organization_type",
+      "days_employed",
+      "own_car_age",
+      "amt_annuity",
+      "name_education_type"
+    ]
+  },
+  "top_10_identical": true,
+  "top_10_same_set": true,
+  "top_n_compared": 20,
+  "rank_moves": [
+    {
+      "feature": "ext_source_3",
+      "sampled_rank": 1,
+      "full_rank": 1,
+      "rank_change": 0
+    },
+    {
+      "feature": "ext_source_2",
+      "sampled_rank": 2,
+      "full_rank": 2,
+      "rank_change": 0
+    },
+    {
+      "feature": "credit_term",
+      "sampled_rank": 3,
+      "full_rank": 3,
+      "rank_change": 0
+    },
+    {
+      "feature": "ext_source_1",
+      "sampled_rank": 4,
+      "full_rank": 4,
+      "rank_change": 0
+    },
+    {
+      "feature": "amt_goods_price",
+      "sampled_rank": 5,
+      "full_rank": 5,
+      "rank_change": 0
+    },
+    {
+      "feature": "organization_type",
+      "sampled_rank": 6,
+      "full_rank": 6,
+      "rank_change": 0
+    },
+    {
+      "feature": "days_employed",
+      "sampled_rank": 7,
+      "full_rank": 7,
+      "rank_change": 0
+    },
+    {
+      "feature": "own_car_age",
+      "sampled_rank": 8,
+      "full_rank": 8,
+      "rank_change": 0
+    },
+    {
+      "feature": "amt_annuity",
+      "sampled_rank": 9,
+      "full_rank": 9,
+      "rank_change": 0
+    },
+    {
+      "feature": "name_education_type",
+      "sampled_rank": 10,
+      "full_rank": 10,
+      "rank_change": 0
+    },
+    {
+      "feature": "occupation_type",
+      "sampled_rank": 11,
+      "full_rank": 11,
+      "rank_change": 0
+    },
+    {
+      "feature": "amt_credit",
+      "sampled_rank": 12,
+      "full_rank": 12,
+      "rank_change": 0
+    },
+    {
+      "feature": "name_contract_type",
+      "sampled_rank": 13,
+      "full_rank": 13,
+      "rank_change": 0
+    },
+    {
+      "feature": "days_id_publish",
+      "sampled_rank": 14,
+      "full_rank": 14,
+      "rank_change": 0
+    },
+    {
+      "feature": "days_last_phone_change",
+      "sampled_rank": 15,
+      "full_rank": 15,
+      "rank_change": 0
+    },
+    {
+      "feature": "amt_req_credit_bureau_year",
+      "sampled_rank": 16,
+      "full_rank": 16,
+      "rank_change": 0
+    },
+    {
+      "feature": "amt_req_credit_bureau_qrt",
+      "sampled_rank": 17,
+      "full_rank": 17,
+      "rank_change": 0
+    },
+    {
+      "feature": "employed_life_ratio",
+      "sampled_rank": 18,
+      "full_rank": 18,
+      "rank_change": 0
+    },
+    {
+      "feature": "flag_document_3",
+      "sampled_rank": 19,
+      "full_rank": 19,
+      "rank_change": 0
+    },
+    {
+      "feature": "region_rating_client_w_city",
+      "sampled_rank": 20,
+      "full_rank": 20,
+      "rank_change": 0
+    }
+  ],
+  "max_abs_rank_change": 0,
+  "rank_correlation_all_features": 0.9990346551843877,
+  "largest_value_change": {
+    "feature": "organization_type",
+    "sampled": 0.124460779604999,
+    "full": 0.130157880589455,
+    "absolute_change": 0.0056971009844559856
+  },
+  "note": "Ranks are compared rather than values: a mean over 2,000 rows differs in the third decimal from one over 307,511 whatever happens. What matters is whether the ordering of the drivers changed."
+}

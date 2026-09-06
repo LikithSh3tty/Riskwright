@@ -455,7 +455,7 @@ def build() -> Path:
         top = SHAP_GLOBAL["features"][:12][::-1]
         ax.barh([f["label"] for f in top], [f["mean_abs_shap"] for f in top], color=ACCENT)
         ax.set_xlabel("Mean |SHAP|")
-        ax.set_title("Global importance (2,000 row sample)", fontsize=12, color=INK)
+        ax.set_title("Global importance (all 307,511 applicants)", fontsize=12, color=INK)
         ax.spines[["top", "right"]].set_visible(False)
         ax.tick_params(labelsize=10)
 
