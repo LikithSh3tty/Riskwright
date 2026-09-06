@@ -86,3 +86,107 @@ questions:
       whether the current application was approved. name_contract_status in
       previous_application refers to PRIOR applications, so answering from it
       would silently answer a different question.
+
+  # ---------------------------------------------------------------------
+  # Second batch, written later to widen the sample. Same rule as the first:
+  # composed against the schema without looking at any prompt version or any
+  # prior failure. Shapes deliberately absent from both existing sets:
+  # conditional aggregates, NULL semantics, negated existence, aggregate
+  # ratios, and thresholded group counts.
+  # ---------------------------------------------------------------------
+
+  - id: H9
+    category: conditional_aggregate
+    question: What share of applicants own both a car and a property?
+    expect: sql
+    reference_sql: |
+      SELECT avg(CASE WHEN flag_own_car = 'Y' AND flag_own_realty = 'Y'
+                      THEN 1.0 ELSE 0.0 END)
+      FROM application_train
+
+  - id: H10
+    category: null_semantics
+    question: How many applicants have no occupation recorded?
+    expect: sql
+    reference_sql: SELECT count(*) FROM application_train WHERE occupation_type IS NULL
+
+  - id: H11
+    category: filtered_extremum
+    question: What is the smallest loan given to someone earning more than 500000?
+    expect: sql
+    reference_sql: |
+      SELECT min(amt_credit) FROM application_train
+      WHERE amt_income_total > 500000
+
+  - id: H12
+    category: negated_existence
+    question: How many applicants have no bureau record at all?
+    expect: sql
+    # The trap is a JOIN, which cannot express absence. NOT EXISTS can.
+    reference_sql: |
+      SELECT count(*) FROM application_train a
+      WHERE NOT EXISTS (SELECT 1 FROM bureau b WHERE b.sk_id_curr = a.sk_id_curr)
+
+  - id: H13
+    category: thresholded_group_count
+    question: How many income types have more than 10000 applicants?
+    expect: sql
+    reference_sql: |
+      SELECT count(*) FROM (
+        SELECT name_income_type FROM application_train
+        GROUP BY name_income_type HAVING count(*) > 10000
+      ) t
+
+  - id: H14
+    category: aggregate_ratio
+    question: What fraction of all money lent went to applicants who defaulted?
+    expect: sql
+    reference_sql: |
+      SELECT sum(amt_credit) FILTER (WHERE target = 1) / sum(amt_credit)
+      FROM application_train
+
+  - id: H15
+    category: unit_conversion
+    question: What is the average age of applicants in years?
+    expect: sql
+    reference_sql: SELECT avg(-days_birth / 365.25) FROM application_train
+
+  - id: H16
+    category: join
+    question: What proportion of previous applications were approved?
+    expect: sql
+    reference_sql: |
+      SELECT avg(CASE WHEN name_contract_status = 'Approved' THEN 1.0 ELSE 0.0 END)
+      FROM previous_application
+
+  - id: H17
+    category: nonexistent_column
+    question: What is the average salary for each occupation in the wider economy?
+    expect: refuse
+    why: >
+      The dataset records the applicant's own income, not any external labour
+      market benchmark. There is nothing to compare an occupation against.
+
+  - id: H18
+    category: nonexistent_column
+    question: What is each applicant's current account balance?
+    expect: refuse
+    why: >
+      No deposit or balance data exists. credit_card_balance is a different
+      table in the wider Kaggle set and is not loaded here.
+
+  - id: H19
+    category: ambiguous
+    question: What is the typical loan?
+    expect: clarify
+    why: >
+      "Typical" could be the mean, the median or the mode, and "loan" could be
+      amt_credit, amt_annuity or amt_goods_price.
+
+  - id: H20
+    category: ambiguous
+    question: Compare good and bad customers.
+    expect: clarify
+    why: >
+      Neither "good" nor "bad" is defined. It could mean the target outcome,
+      a risk band, or profitability, which the data does not carry.

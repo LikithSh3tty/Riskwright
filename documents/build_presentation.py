@@ -258,14 +258,16 @@ def build() -> Path:
             "v4 was tuned on the failures v3 exposed, so",
             "its 100% is optimistic by construction.",
             "",
-            "**Held out: 8 further questions, written**",
-            "**after the prompt was frozen.**",
-            "     v3    7/8         v4    7/8",
+            "**Held out: 20 questions written after**",
+            "**the prompt was frozen, in two batches.**",
+            "     v4    19 / 20      95%",
             "",
-            "88% held out against 100% development.",
-            "That 12 point gap is the honest number,",
-            "and v4 shows no reproducible advantage",
-            "over v3 out of sample.",
+            "16 categories. The one failure returned",
+            "the right quantity as a percentage where",
+            "the reference used a fraction, and is",
+            "scored as a failure regardless: relaxing",
+            "the grader after seeing the result would",
+            "defeat the point of holding a set out.",
         ], x=0.54, y=0.74, dy=0.048, size=12.5)
         pdf.savefig(fig); plt.close(fig)
 

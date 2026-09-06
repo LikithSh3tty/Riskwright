@@ -693,29 +693,45 @@ python -m tests.run_chatbot_eval --versions v1 v2 v3 v4   # development set
 python -m tests.run_chatbot_eval --heldout --versions v4  # held-out set
 ```
 
-**Headline: 100% on the development set, 7/8 on held-out questions written after the prompt
-was frozen.** The second number is the one to trust.
+**Headline: 19/20 on held-out questions written after the prompt was frozen, against 100% on
+the development set.** The held-out number is the one to trust.
 
 #### Held-out set
 
 The 30 development questions stopped being a clean measurement the moment v4 was tuned on the
 failures they exposed. At that point they are a training set, and a score on your own training
-set says nothing about generalisation. So `tests/chatbot_heldout.yaml` holds eight further
-questions, written afterwards, deliberately using shapes absent from the development set:
-percentiles, multi-condition filters, column-to-column ratios, distinct counts, and
-per-applicant averaging over a child table.
+set says nothing about generalisation.
 
-| Version | Held-out run 1 | Held-out run 2 |
-|---------|----------------|----------------|
-| v3 | 7/8 | 7/8 |
-| v4 | 6/8 | 7/8 |
+`tests/chatbot_heldout.yaml` therefore holds **20 questions written after the prompt was
+frozen**, in two batches, neither derived from any observed failure. They deliberately use
+shapes absent from the development set: percentiles, multi-condition filters,
+column-to-column ratios, distinct counts, per-applicant averaging over a child table,
+conditional aggregates, NULL semantics, negated existence, aggregate ratios, unit conversion,
+and thresholded group counts. Sixteen categories across 14 SQL questions, 3 refusals and 3
+clarifications.
 
-**88% held-out against 100% development. That 12 point gap is the cost of tuning on the
-development set, and it is the honest measure of this system.**
+| Set | Questions | v4 |
+|-----|-----------|-----|
+| Held out, written after freeze | 20 | **19/20, 95%** |
+| Development, used for tuning | 30 | 30/30, 100% |
 
-It also shows **v4 has no reproducible advantage over v3 out of sample.** The two questions v4
-gained were specific to the failures it was written to fix. Tuning fixed those cases without
-making the system generally better, which is precisely what a held-out set exists to reveal.
+Every held-out category passed except one. By category on the held-out set: aggregate ratio
+1/1, ambiguous 3/3, column ratio 1/1, conditional aggregate 0/1, distinct count 1/1, filtered
+extremum 1/1, group-by ranking 1/1, join 2/2, multi-filter 1/1, negated existence 1/1,
+non-existent column 2/2, null semantics 1/1, percentile 1/1, thresholded group count 1/1,
+unanswerable 1/1, unit conversion 1/1.
+
+**The one failure is worth reading, because it is arguably the harness being wrong rather than
+the model.** H9 asks "What share of applicants own both a car and a property?". The reference
+returns a fraction, 0.235309. The model returned 23.53% and phrased it as "23.53% of applicants
+own both a car and a property". It computed the identical quantity and expressed it in the
+other conventional unit for the word "share". It is scored as a failure here regardless:
+relaxing the comparison after seeing the result would be fitting the grader to the outcome,
+which is exactly what a held-out set exists to prevent.
+
+An earlier, narrower held-out batch of 8 questions scored v3 at 7/8 twice and v4 at 6/8 then
+7/8, which showed **v4 had no reproducible advantage over v3 out of sample** even though it
+gained two questions on the development set. Those 8 are the first batch of the 20 above.
 
 #### Development set, as tuning history
 
@@ -905,10 +921,10 @@ trust this.
   non-existent column impossible, which is a hard guarantee. Declining a question that is
   semantically unanswerable from columns that *do* exist is a model judgement, and held-out
   question H8 was refused in one run and answered wrongly in another.
-- Held-out accuracy is 7/8 against 100% on the development set. The development set was used
+- Held-out accuracy is 19/20 against 100% on the development set. The development set was used
   for tuning and its score is not a generalisation estimate.
-- Eight held-out questions is a small sample. A wider set with a proper train and test split
-  is the honest next step.
+- Twenty held-out questions is still a modest sample, and they were written by the same person
+  who wrote the prompt. An independently authored set would be a stronger test.
 - Conversation memory is in-process: it does not survive an API restart and does not scale
   beyond one container. Redis is the obvious next step and is not warranted at this size.
 - Prompt caching does not engage, because the prompt is smaller than Haiku 4.5's 4,096 token
