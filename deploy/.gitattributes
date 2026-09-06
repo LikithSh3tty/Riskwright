@@ -1,0 +1,11 @@
+# These files are executed inside Linux containers. core.autocrlf on a Windows
+# clone would check them out with CRLF, and a shell script with CRLF endings
+# fails in the container with "bad interpreter: /bin/sh^M" -- at image build or
+# first boot, long after the commit that caused it.
+#
+# Forced to LF regardless of the cloning machine's settings. Scoped to deploy/
+# so nothing outside it is affected.
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
+.env.example text eol=lf
