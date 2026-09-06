@@ -1,0 +1,185 @@
+{
+  "generated_at": "2026-09-06T08:14:58.520763+00:00",
+  "model": "lightgbm",
+  "n_scored": 307511,
+  "decision": {
+    "threshold": 0.083669,
+    "threshold_basis": "cost-optimal: the threshold minimising expected cost under the stated ratio, computed on calibrated probabilities",
+    "rule": "approved = calibrated default probability < t_high. t_high is the Medium/High band boundary: at or above it an applicant is declined or escalated.",
+    "population_approval_rate": 0.7039162826695631,
+    "population_default_rate": 0.08072881945686496
+  },
+  "attributes": {
+    "code_gender": {
+      "groups": [
+        {
+          "group": "F",
+          "count": 202448,
+          "share_of_population": 0.6583439291602576,
+          "approval_rate": 0.7412026792065123,
+          "mean_predicted_probability": 0.06660383773027838,
+          "observed_default_rate": 0.06999328222555916
+        },
+        {
+          "group": "M",
+          "count": 105059,
+          "share_of_population": 0.34164306317497584,
+          "approval_rate": 0.6320638879106026,
+          "mean_predicted_probability": 0.08670582158547391,
+          "observed_default_rate": 0.1014192025433328
+        },
+        {
+          "group": "XNA",
+          "count": 4,
+          "share_of_population": 1.3007664766463638e-05,
+          "approval_rate": 0.75,
+          "mean_predicted_probability": 0.06627347844725326,
+          "observed_default_rate": 0.0
+        }
+      ],
+      "four_fifths": {
+        "ratio": 0.8527544565640978,
+        "passes_four_fifths": true,
+        "lowest_group": "M",
+        "lowest_approval_rate": 0.6320638879106026,
+        "highest_group": "F",
+        "highest_approval_rate": 0.7412026792065123,
+        "groups_compared": 2,
+        "excluded_from_ratio": [
+          {
+            "group": "XNA",
+            "count": 4,
+            "approval_rate": 0.75
+          }
+        ]
+      }
+    },
+    "age_band": {
+      "groups": [
+        {
+          "group": "under 30",
+          "count": 45186,
+          "share_of_population": 0.1469410850343565,
+          "approval_rate": 0.48729695038286197,
+          "mean_predicted_probability": 0.11356116804914858,
+          "observed_default_rate": 0.11443810029655203
+        },
+        {
+          "group": "30-45",
+          "count": 123737,
+          "share_of_population": 0.4023823538019778,
+          "approval_rate": 0.6807179744134737,
+          "mean_predicted_probability": 0.07735004686829665,
+          "observed_default_rate": 0.09002157802435812
+        },
+        {
+          "group": "45-60",
+          "count": 103287,
+          "share_of_population": 0.33588066768343244,
+          "approval_rate": 0.7697774163253847,
+          "mean_predicted_probability": 0.06116049250791145,
+          "observed_default_rate": 0.06563265464192009
+        },
+        {
+          "group": "60+",
+          "count": 35301,
+          "share_of_population": 0.11479589348023322,
+          "approval_rate": 0.8698053879493499,
+          "mean_predicted_probability": 0.04458186074631294,
+          "observed_default_rate": 0.04917707713662502
+        }
+      ],
+      "four_fifths": {
+        "ratio": 0.5602367577093441,
+        "passes_four_fifths": false,
+        "lowest_group": "under 30",
+        "lowest_approval_rate": 0.48729695038286197,
+        "highest_group": "60+",
+        "highest_approval_rate": 0.8698053879493499,
+        "groups_compared": 4,
+        "excluded_from_ratio": []
+      }
+    },
+    "name_family_status": {
+      "groups": [
+        {
+          "group": "Civil marriage",
+          "count": 29775,
+          "share_of_population": 0.0968258046053637,
+          "approval_rate": 0.6375818639798488,
+          "mean_predicted_probability": 0.08560812445583704,
+          "observed_default_rate": 0.09944584382871537
+        },
+        {
+          "group": "Married",
+          "count": 196432,
+          "share_of_population": 0.6387804013514964,
+          "approval_rate": 0.7178616518693491,
+          "mean_predicted_probability": 0.07074771997129407,
+          "observed_default_rate": 0.07559868045939562
+        },
+        {
+          "group": "Separated",
+          "count": 19770,
+          "share_of_population": 0.06429038310824653,
+          "approval_rate": 0.7317653009610521,
+          "mean_predicted_probability": 0.0683315525435336,
+          "observed_default_rate": 0.0819423368740516
+        },
+        {
+          "group": "Single / not married",
+          "count": 45444,
+          "share_of_population": 0.14778007941179339,
+          "approval_rate": 0.6379279992958367,
+          "mean_predicted_probability": 0.08596773755633777,
+          "observed_default_rate": 0.0980767538068832
+        },
+        {
+          "group": "Unknown",
+          "count": 2,
+          "share_of_population": 6.503832383231819e-06,
+          "approval_rate": 1.0,
+          "mean_predicted_probability": 0.019299277111783447,
+          "observed_default_rate": 0.0
+        },
+        {
+          "group": "Widow",
+          "count": 16088,
+          "share_of_population": 0.05231682769071676,
+          "approval_rate": 0.8085529587270015,
+          "mean_predicted_probability": 0.05529192266021932,
+          "observed_default_rate": 0.058242168075584286
+        }
+      ],
+      "four_fifths": {
+        "ratio": 0.7885468194732325,
+        "passes_four_fifths": false,
+        "lowest_group": "Civil marriage",
+        "lowest_approval_rate": 0.6375818639798488,
+        "highest_group": "Widow",
+        "highest_approval_rate": 0.8085529587270015,
+        "groups_compared": 5,
+        "excluded_from_ratio": [
+          {
+            "group": "Unknown",
+            "count": 2,
+            "approval_rate": 1.0
+          }
+        ]
+      }
+    }
+  },
+  "four_fifths_rule": {
+    "threshold": 0.8,
+    "min_group_for_ratio": 100,
+    "failing_attributes": [
+      "age_band",
+      "name_family_status"
+    ],
+    "note": "A ratio below 0.8 is a screening flag, not a finding of disparate impact. Disparate impact in the legal sense requires a business-necessity analysis and a search for a less-discriminatory alternative, neither of which is performed here. Equally, a ratio above 0.8 is not a compliance result."
+  },
+  "scope": {
+    "attributes_are_grouping_only": "code_gender, days_birth and name_family_status are read from Postgres and used to group applicants. They are not added to any feature path: prepare_features drops them, so the scores measured here are the scores the served model produces.",
+    "population": "application_train in full. These are the rows the model was fitted on, so the approval rates describe the training population rather than an out-of-sample one."
+  }
+}

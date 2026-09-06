@@ -68,7 +68,7 @@ notebooks/                eda.ipynb and its eda.py export
 src/
   data/loader.py          CSV to Postgres, idempotent
   data/preprocessor.py    Cleaning, feature derivation, encoding
-  ml/                     Training, inference, evaluation, SHAP, rule derivation
+  ml/                     Training, inference, evaluation, SHAP, rules, fairness audit
   talk_to_data/           Natural language to SQL, validation, prompts, memory
   utils/                  Logging, configuration, helpers, container-safe paths
 app/                      FastAPI. A thin wrapper over src/, no business logic.
@@ -89,6 +89,7 @@ restructure, the following were added:
 |----------|-----|
 | `src/ml/explain.py` | SHAP values per prediction (Part 4) |
 | `src/ml/rules.py` | Rule derivation module (listed under expected deliverables) |
+| `src/ml/fairness_audit.py` | Disparate impact screen against the served model. Not required; see **Fair lending** |
 | `app/` | FastAPI layer, so the UI holds no business logic and stays replaceable |
 | `frontend/` | Part 5 requires a UI; the tree names no location for one |
 | `configs/` | Training and application configuration, plus the column glossary |
@@ -245,6 +246,7 @@ python -m src.data.loader          # load the CSVs, idempotent
 python -m src.ml.train             # 5-fold CV, both models, SHAP, rules
 python -m src.ml.train --quick     # single split, about 60 seconds
 python -m src.ml.train --fairness  # cost of excluding protected attributes
+python -m src.ml.fairness_audit    # disparate impact screen, no retrain
 pytest                             # 46 tests, no database needed
 
 uvicorn app.main:app --reload
@@ -435,7 +437,12 @@ is the cost assumption doing its job, not the model failing.
 python -m src.ml.train              # 5-fold CV, both models, then SHAP and rules
 python -m src.ml.train --quick      # single split, LightGBM only, about 60 seconds
 python -m src.ml.train --artifacts  # rebuild SHAP and rules from the saved model
+python -m src.ml.train --fairness   # cost of excluding the protected attributes
+python -m src.ml.fairness_audit     # disparate impact screen, no retrain
 ```
+
+`fairness_audit` reads the saved model rather than fitting one, so it takes seconds and does
+not disturb any artifact the reported figures depend on.
 
 ## Fair lending
 
@@ -495,15 +502,175 @@ These remain and are genuine risks:
 - **`days_employed`** correlates with age, though it measures something a lender may
   legitimately consider.
 
+#### `employed_life_ratio`: a protected attribute re-entering through a derived feature
+
+This one is not a correlation. It is age arriving in the model by construction, and it is the
+sharpest finding in this section.
+
+```python
+# src/data/preprocessor.py, add_derived_features
+"employed_life_ratio": ratio("days_employed", "days_birth"),
+```
+
+`days_birth` is a negative day offset from the application date, so it *is* age, in days.
+The ratio therefore reads as "the fraction of their life this applicant has held their current
+job", and its denominator is the protected attribute itself. Hold `days_employed` fixed and
+the feature becomes a strictly monotonic function of age.
+
+The exclusion is ordered such that this survives it. `add_derived_features` runs first;
+`prepare_features` then drops `days_birth` as redundant and `age_years` as protected. By the
+time either is removed the ratio has already been computed and keeps its value. The feature
+matrix contains no column named for age, and the model still sees age.
+
+**Measured effect.** Two applicants identical in every field, differing only in `days_birth`,
+scored through the served model:
+
+| Age | Predicted default probability |
+|-----|-------------------------------|
+| 35 | 0.027133 |
+| 55 | 0.029376 |
+
+Roughly an **8% relative swing** attributable to age alone, all else equal. Small in absolute
+terms at these probabilities, and not small in kind: it is exactly the effect the exclusion
+was put in place to prevent.
+
+Repeating that sweep across 20,000 real applicants — rewriting `days_birth` to age 35, then to
+age 55, and changing nothing else — shows how the effect is distributed, and confirms the
+mechanism:
+
+| Rows | n | Mean swing | Median | Share whose score moved at all | 90th percentile |
+|------|---|-----------|--------|-------------------------------|-----------------|
+| `days_employed` present | 16,466 | +3.69% | +0.91% | 71.8% | +7.72% |
+| `days_employed` sentinel | 3,534 | **+0.00%** | +0.00% | **0.0%** | +0.00% |
+
+The second row is the proof. Where `days_employed` carries the "not currently employed"
+sentinel, `clean` turns it into `NaN`, the ratio becomes `NaN`, and the score does not move
+for a single one of those 3,534 applicants. Age is inert exactly when the ratio is undefined,
+which is what identifies `employed_life_ratio` as the whole of the channel rather than one
+contributor among several. The single applicant tabulated above sits near the 90th percentile
+of the swing distribution; the typical employed applicant sees less, and about a quarter see
+none because they do not cross a split boundary.
+
+**How it was found.** By comparing what the two UIs exposed. The what-if form in one client
+accepted a different set of fields from the other, and a value that should have been inert
+moved the score. A single frontend would not have surfaced it.
+
+**It is unlikely to be the only such path.** `days_employed`, `own_car_age`,
+`days_id_publish` and `days_registration` are all day-offset or duration columns that
+plausibly carry age signal, and `credit_term` and the other ratios were not checked for
+analogous constructions. No systematic proxy-detection pass was performed. The honest claim
+is that one leak was found, not that one leak exists.
+
+**Why it is documented rather than removed.** Dropping `employed_life_ratio` changes the
+feature set from 120 columns to 119 and requires a retrain. Every figure in this README and in
+the presentation — ROC-AUC, PR-AUC, the calibration constant, the cost-optimal threshold, the
+band boundaries, the SHAP importances, the derived rules, the fair-lending delta, and the
+disparate impact measurement below — is computed against the 120-feature artifact that is
+actually served. Removing the feature would invalidate all of them and leave a README
+describing a model that is not in the container. Measuring and reporting the leak against the
+shipped artifact is the more useful result.
+
+**Where this would be caught in production.** In proxy detection, before deployment: fit a
+model to predict each protected attribute from the candidate feature matrix and inspect what
+it leans on. A pass like that would have flagged `employed_life_ratio` from its construction
+alone, without anyone needing to notice a form field behaving oddly. It is listed below as
+work a production system needs, and this is the concrete instance of why.
+
+### Disparate impact measurement
+
+Excluding an attribute says nothing about how the resulting decisions fall across the groups
+that attribute describes. This measures it. The protected columns are read from Postgres and
+used to **group** applicants; they are never added to a feature path, so the scores below are
+the scores the served model produces.
+
+```bash
+POSTGRES_HOST=localhost python -m src.ml.fairness_audit
+```
+
+Every applicant in `application_train` is scored with the served LightGBM artifact and the
+deployed threshold is applied. **Approved** means a calibrated default probability below
+`t_high` = 0.083669, the Medium/High band boundary: at or above it an applicant is declined or
+escalated. Population approval rate is 70.39%. Results are written to
+`models/fairness_audit.json`, which the README and the presentation both read.
+
+**`code_gender`**
+
+| Group | n | Approval rate | Mean predicted p | Observed default rate |
+|-------|---|---------------|------------------|-----------------------|
+| F | 202,448 | 0.7412 | 0.0666 | 0.0700 |
+| M | 105,059 | 0.6321 | 0.0867 | 0.1014 |
+| XNA | 4 | 0.7500 | 0.0663 | 0.0000 |
+
+Four-fifths ratio **0.8528** — passes. Lowest M, highest F.
+
+**Age band** (derived from `days_birth`)
+
+| Group | n | Approval rate | Mean predicted p | Observed default rate |
+|-------|---|---------------|------------------|-----------------------|
+| under 30 | 45,186 | 0.4873 | 0.1136 | 0.1144 |
+| 30-45 | 123,737 | 0.6807 | 0.0774 | 0.0900 |
+| 45-60 | 103,287 | 0.7698 | 0.0612 | 0.0656 |
+| 60+ | 35,301 | 0.8698 | 0.0446 | 0.0492 |
+
+Four-fifths ratio **0.5602 — fails.** Lowest "under 30", highest "60+".
+
+**`name_family_status`**
+
+| Group | n | Approval rate | Mean predicted p | Observed default rate |
+|-------|---|---------------|------------------|-----------------------|
+| Civil marriage | 29,775 | 0.6376 | 0.0856 | 0.0994 |
+| Married | 196,432 | 0.7179 | 0.0707 | 0.0756 |
+| Separated | 19,770 | 0.7318 | 0.0683 | 0.0819 |
+| Single / not married | 45,444 | 0.6379 | 0.0860 | 0.0981 |
+| Unknown | 2 | 1.0000 | 0.0193 | 0.0000 |
+| Widow | 16,088 | 0.8086 | 0.0553 | 0.0582 |
+
+Four-fifths ratio **0.7885 — fails.** Lowest "Civil marriage", highest "Widow".
+
+#### What this says, and what it does not
+
+**Two of the three attributes fail the four-fifths screen.** Age fails badly: an applicant
+under 30 is approved at 56% of the rate of an applicant over 60. Family status fails
+marginally at 0.7885. Gender passes at 0.8528, which is a pass and not a clearance.
+
+Groups smaller than 100 are reported above but excluded from the ratio, because an approval
+rate over four rows is a statement about sampling noise. That exclusion is not doing any
+favours to the result: including the two-applicant "Unknown" group, whose approval rate is
+1.0000, would push family status from 0.7885 down to 0.6376.
+
+**Age failing is not a coincidence, and it is not solely the leak.** Age band is the attribute
+`employed_life_ratio` carries information about, so the leak documented above contributes.
+But the gradient is much larger than that feature can explain on its own: the model's mean
+predicted probability rises monotonically as age falls, and so does the *observed* default
+rate, from 4.92% at 60+ to 11.44% under 30. The model is tracking a real pattern in the
+training data through whatever correlates it can reach.
+
+That is precisely the distinction the law draws, and it is why this section stops here.
+**Approval-rate disparity is not disparate impact in the legal sense.** The four-fifths ratio
+is a screen: it identifies a disparity large enough that someone must go and answer the
+questions that follow. Those questions are whether the practice producing the disparity is
+justified by business necessity — demonstrably predictive of creditworthiness, not merely
+correlated — and whether a less-discriminatory alternative achieving the same legitimate
+objective exists. That analysis is not performed here, and nothing in this repository performs
+it. A failing ratio here is therefore a flag, not a finding of liability; the passing gender
+ratio is likewise not a certificate of compliance.
+
+Nor is the population an unbiased one to measure on. These are the rows the model was fitted
+on, so the approval rates describe the training population rather than an out-of-sample one,
+and `application_train` contains only accepted applicants — a censored population, as noted
+under reject inference below.
+
 ### What a production system would additionally need
 
 Excluding the attributes is the floor, not the bar:
 
-- **Disparate impact testing.** Compare approval and default rates across protected groups at
-  the chosen threshold, using the attributes for *testing* while keeping them out of the
-  *model*. The four-fifths rule is the usual starting screen.
+- **Business-necessity analysis.** The screen above found two failing ratios and cannot say
+  whether either is justified. This is the missing half of a disparate impact review and the
+  largest gap in the fair-lending work here.
 - **Proxy detection.** Fit a model to predict each protected attribute from the remaining
-  features. High accuracy means the model can reconstruct it regardless of exclusion.
+  features. High accuracy means the model can reconstruct it regardless of exclusion. The
+  `employed_life_ratio` leak above is a worked example of what this pass is for, and of the
+  fact that finding one such path by hand does not bound how many remain.
 - **Adverse action reason codes.** ECOA requires a declined applicant to be told why. The SHAP
   contributions are the right raw material, but they need mapping to a fixed, reviewed set of
   reasons, not free-generated text.
@@ -513,8 +680,11 @@ Excluding the attributes is the floor, not the bar:
   learns from a censored population. This biases the model in ways that interact with fairness
   testing.
 
-None of that is implemented here. This is a technical demonstration, and the honest position
-is that removing the protected attributes makes it defensible to discuss, not deployable.
+Of that list, only the disparate impact screen is implemented, and it is the half of a
+disparate impact review that does not require judgement. This is a technical demonstration,
+and the honest position is that removing the protected attributes, measuring what the
+remaining decisions look like, and naming a proxy that survived the removal makes it
+defensible to discuss. It does not make it deployable.
 
 ## Explainability
 
@@ -875,9 +1045,17 @@ trust this.
   from prior credit history; that is the largest single improvement available.
 - No hyperparameter search. Deliberate, but it means the reported 0.7653 is a floor.
 - Protected attributes are excluded from the model (see **Fair lending** above), at a measured
-  cost of 0.0037 ROC-AUC. What is *not* done: disparate impact testing, proxy detection,
-  adverse action reason codes, and reject inference. Several residual proxies remain and are
-  listed in that section. Not deployable without that work.
+  cost of 0.0037 ROC-AUC. Exclusion did not hold: `employed_life_ratio` is derived from
+  `days_birth` before `days_birth` is dropped, so age reaches the model through it. Measured
+  and documented rather than removed, because removing it would require a retrain and
+  invalidate every figure reported here.
+- **Two of three protected attributes fail the four-fifths screen** at the deployed threshold:
+  age band at 0.5602 and `name_family_status` at 0.7885. `code_gender` passes at 0.8528. That
+  is a screening flag, not a finding of disparate impact — the business-necessity analysis the
+  legal test requires is not performed.
+- Still not done: business-necessity analysis, systematic proxy detection, adverse action
+  reason codes, and reject inference. Several residual proxies remain and are listed in that
+  section. Not deployable without that work.
 - The 10:1 cost ratio is an assumption, not a measurement. Every threshold and band moves if a
   real recovery model replaces it.
 
@@ -935,6 +1113,10 @@ trust this.
   assignment, which lists saved model artifacts as a repository deliverable, and it means a
   fresh clone can serve predictions without training first.
 - No authentication on the API. Appropriate for an assignment, not for anything else.
+- The 46 tests cover `src/` only. There is no automated test coverage of the API layer in
+  `app/` and none of the React UI: both were verified by hand against a running stack. The
+  `employed_life_ratio` leak was found that way too, by comparing two frontends rather than by
+  a test, which is a fair indication of what hand-verification catches and what it does not.
 
 ---
 
@@ -944,3 +1126,8 @@ trust this.
 pip install -r requirements-dev.txt
 pytest
 ```
+
+46 tests, no database required. They cover `src/`: the preprocessor's cleaning and derivation
+rules and the calibration identity, the chatbot's SQL validation gate, and the container-safe
+path helpers. The API layer and the React UI have no automated coverage and were verified by
+hand; that gap is listed under limitations.
