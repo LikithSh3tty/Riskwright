@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riskwright — AI-powered credit risk platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;0,800;1,400&display=swap">
+    <style>
+/* ===========================================================================
+   THEME TOKENS
+   Terminal Green. Change these and the whole deck follows.
+   Authored at the 1920x1080 stage size, so every length here is a stage pixel
+   rather than a viewport unit.
+   =========================================================================== */
+:root {
+    --bg:            #0d1117;   /* GitHub dark ground */
+    --bg-panel:      #161b22;
+    --bg-raised:     #1c2128;
+    --border:        #30363d;
+    --border-bright: #484f58;
+
+    --green:         #39d353;   /* terminal green, the one accent */
+    --green-dim:     #26a641;
+    --green-glow:    rgba(57, 211, 83, 0.16);
+    --red:           #f85149;
+    --amber:         #d29922;
+    --blue:          #58a6ff;
+
+    --text:          #e6edf3;
+    --text-dim:      #8b949e;
+    --text-faint:    #6e7681;
+
+    --font: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+
+    --h1:      104px;
+    --h2:      58px;
+    --sub:     28px;
+    --body:    25px;
+    --small:   21px;
+    --tiny:    18px;
+
+    --pad:     84px;
+    --gap:     30px;
+
+    --ease:    cubic-bezier(0.16, 1, 0.3, 1);
+    --dur:     0.55s;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================================================
+   FIXED 16:9 STAGE
+   The viewport fills the window; the stage is always 1920x1080 and is scaled
+   as a single unit. Content never reflows -- on a phone the deck letterboxes
+   rather than rearranging, which is what keeps a slide a slide.
+   =========================================================================== */
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+}
+
+.deck-viewport {
+    position: fixed;
+    inset: 0;
+    display: block;
+    background: #000;
+}
+
+.deck-stage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: 0 0;
+    background: var(--bg);
+    overflow: hidden;
+}
+
+/* Slide visibility. Deliberately not `display`: a later
+   `.slide-content { display: flex }` would win the cascade and every slide
+   would paint at once. */
+.slide {
+    position: absolute;
+    inset: 0;
+    padding: var(--pad);
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s var(--ease);
+    font-family: var(--font);
+    color: var(--text);
+    font-size: var(--body);
+    line-height: 1.5;
+}
+
+.slide.active {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ===========================================================================
+   ATMOSPHERE
+   Scan lines and a faint corner glow, the Terminal Green signature. Both are
+   pointer-events:none overlays so they never intercept a click.
+   =========================================================================== */
+.deck-stage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 900;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.014) 0px,
+        rgba(255, 255, 255, 0.014) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+}
+
+.deck-stage::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 899;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 88% 8%, var(--green-glow), transparent 42%),
+        radial-gradient(circle at 4% 96%, rgba(88, 166, 255, 0.07), transparent 38%);
+}
+
+/* ===========================================================================
+   SLIDE FURNITURE
+   A terminal prompt instead of a title bar, and a slide counter bottom-right.
+   =========================================================================== */
+.slide-head { margin-bottom: 40px; }
+
+.prompt {
+    font-size: var(--small);
+    color: var(--green-dim);
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+    font-weight: 500;
+}
+.prompt .sigil { color: var(--text-faint); }
+
+h1 {
+    font-size: var(--h1);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1.02;
+    color: var(--text);
+}
+
+h2 {
+    font-size: var(--h2);
+    font-weight: 700;
+    letter-spacing: -0.028em;
+    line-height: 1.08;
+    color: var(--text);
+}
+
+.subtitle {
+    font-size: var(--sub);
+    color: var(--text-dim);
+    font-weight: 400;
+    margin-top: 16px;
+    max-width: 1500px;
+}
+
+.rule {
+    height: 2px;
+    background: linear-gradient(to right, var(--green), var(--border) 62%, transparent);
+    margin: 26px 0 0;
+}
+
+.slide-no {
+    position: absolute;
+    right: var(--pad);
+    bottom: 44px;
+    font-size: var(--tiny);
+    color: var(--text-faint);
+    letter-spacing: 0.14em;
+    z-index: 950;
+}
+
+/* Blinking cursor, title slide only. Honours reduced motion below. */
+.cursor {
+    display: inline-block;
+    width: 0.58em;
+    height: 0.94em;
+    background: var(--green);
+    margin-left: 0.1em;
+    vertical-align: -0.08em;
+    animation: blink 1.15s steps(1) infinite;
+}
+@keyframes blink { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
+
+/* ===========================================================================
+   LAYOUT
+   =========================================================================== */
+.cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 52px;
+    align-items: start;
+}
+.cols.wide-left  { grid-template-columns: 1.35fr 1fr; }
+.cols.wide-right { grid-template-columns: 1fr 1.35fr; }
+
+.stack { display: flex; flex-direction: column; gap: var(--gap); }
+
+/* ===========================================================================
+   PANELS, TABLES, CHIPS
+   Terminal output rather than slideware: hard corners, hairline borders,
+   green header rows.
+   =========================================================================== */
+.panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--green-dim);
+    padding: 26px 30px;
+}
+.panel.plain { border-left-color: var(--border); }
+.panel.warn  { border-left-color: var(--red); }
+
+.panel-label {
+    font-size: var(--tiny);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--text-faint);
+    margin-bottom: 12px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--small);
+    font-variant-numeric: tabular-nums;
+}
+th {
+    text-align: left;
+    font-weight: 700;
+    color: var(--green);
+    border-bottom: 2px solid var(--border-bright);
+    padding: 12px 16px 11px;
+    font-size: var(--tiny);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+}
+tr:last-child td { border-bottom: none; }
+tr.hi td {
+    background: rgba(57, 211, 83, 0.09);
+    font-weight: 700;
+    color: var(--text);
+}
+td.num, th.num { text-align: right; }
+td.dim { color: var(--text-dim); }
+
+.chip {
+    display: inline-block;
+    padding: 3px 12px 4px;
+    font-size: var(--tiny);
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    border: 1px solid;
+}
+.chip.pass { color: var(--green); border-color: var(--green-dim);
+             background: rgba(57, 211, 83, 0.10); }
+.chip.fail { color: var(--red);   border-color: var(--red);
+             background: rgba(248, 81, 73, 0.10); }
+
+/* Big single figures, for the moments a number carries the slide. */
+.figure-row { display: flex; gap: 64px; flex-wrap: wrap; }
+.figure .value {
+    font-size: 76px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--green);
+    font-variant-numeric: tabular-nums;
+}
+.figure .value.neutral { color: var(--text); }
+.figure .value.bad     { color: var(--red); }
+.figure .label {
+    font-size: var(--tiny);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-top: 10px;
+}
+
+ul { list-style: none; }
+li {
+    position: relative;
+    padding-left: 30px;
+    margin-bottom: 13px;
+    color: var(--text-dim);
+    font-size: var(--body);
+}
+li::before {
+    content: '>';
+    position: absolute;
+    left: 0;
+    color: var(--green-dim);
+    font-weight: 700;
+}
+li strong { color: var(--text); font-weight: 700; }
+li.bad::before { content: '!'; color: var(--red); }
+
+p { color: var(--text-dim); font-size: var(--body); }
+p strong, .lede strong { color: var(--text); font-weight: 700; }
+p + p { margin-top: 16px; }
+.lede { color: var(--text); font-size: 30px; line-height: 1.42; }
+code, .mono-block {
+    font-family: var(--font);
+    color: var(--green);
+    background: rgba(57, 211, 83, 0.08);
+    padding: 1px 7px;
+    font-size: 0.92em;
+}
+.mono-block {
+    display: block;
+    background: #010409;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 22px 26px;
+    font-size: var(--small);
+    line-height: 1.62;
+    white-space: pre;
+    overflow: hidden;
+}
+.mono-block .ok  { color: var(--green); }
+.mono-block .no  { color: var(--red); }
+.mono-block .key { color: var(--blue); }
+
+.note { font-size: var(--small); color: var(--text-faint); line-height: 1.5; }
+.note.alert { color: var(--red); }
+.note.good  { color: var(--green); }
+
+/* Horizontal bars for the SHAP ranking. Width is set inline from the data. */
+.bar-row {
+    display: grid;
+    grid-template-columns: 360px 1fr 92px;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 10px;
+    font-size: 19px;
+}
+.bar-row .name { color: var(--text-dim); text-align: right;
+                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { background: var(--bg-raised); height: 24px; border: 1px solid var(--border); }
+.bar-fill  { height: 100%; background: linear-gradient(to right, var(--green-dim), var(--green)); }
+.bar-row .val { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* Screenshots. Direct file paths, per the skill -- the deck is viewed from
+   the folder it lives in, so base64 would only inflate the file. */
+.shot {
+    width: 100%;
+    max-height: 700px;
+    object-fit: contain;
+    border: 1px solid var(--border-bright);
+    background: var(--bg-panel);
+}
+
+/* ===========================================================================
+   ENTRANCE ANIMATION
+   One orchestrated reveal per slide, staggered. High-impact once beats
+   scattered micro-interactions.
+   =========================================================================== */
+.reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.slide.active .reveal { opacity: 1; transform: translateY(0); }
+.slide.active .reveal:nth-child(1) { transition-delay: 0.06s; }
+.slide.active .reveal:nth-child(2) { transition-delay: 0.14s; }
+.slide.active .reveal:nth-child(3) { transition-delay: 0.22s; }
+.slide.active .reveal:nth-child(4) { transition-delay: 0.30s; }
+.slide.active .reveal:nth-child(5) { transition-delay: 0.38s; }
+.slide.active .reveal:nth-child(6) { transition-delay: 0.46s; }
+
+/* ===========================================================================
+   PROGRESS BAR  (outside the stage, so it is not part of the 16:9 canvas)
+   =========================================================================== */
+.progress {
+    position: fixed;
+    left: 0; bottom: 0;
+    height: 3px;
+    background: var(--green);
+    z-index: 10000;
+    transition: width 0.35s var(--ease);
+}
+
+/* ===========================================================================
+   REDUCED MOTION
+   =========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+    .reveal { opacity: 1; transform: none; }
+    .cursor { opacity: 1; }
+}
+
+/* Print/export: the PDF exporter screenshots each slide, so nothing here
+   should hide content when a slide is forced visible. */
+.slide.export-visible { visibility: visible; opacity: 1; }
+.slide.export-visible .reveal { opacity: 1; transform: none; }
+</style>
+</head>
+<body>
+    <div class="deck-viewport">
+        <main class="deck-stage" id="deckStage">
+            <section class="slide active">
+                <div style="display:flex;flex-direction:column;justify-content:center;height:100%;">
+                    <div class="prompt reveal"><span class="sigil">$</span> riskwright --serve</div>
+                    <h1 class="reveal" style="margin-top:18px;">Riskwright<span class="cursor"></span></h1>
+                    <p class="reveal" style="font-size:34px;color:var(--text-dim);margin-top:26px;max-width:1250px;">
+                        An AI-powered credit risk platform. Predicts default probability,
+                        explains every decision, derives credit policy rules, and answers
+                        plain-English questions about the data.
+                    </p>
+                    <div class="rule reveal" style="max-width:640px;margin-top:44px;"></div>
+                    <p class="reveal note" style="margin-top:34px;font-size:22px;">
+                        Home Credit Default Risk &nbsp;|&nbsp; 307,511 applications
+                        &nbsp;|&nbsp; 8.07% default rate
+                        &nbsp;|&nbsp; 120 features<br>
+                        NeoStats AI Engineer assignment
+                    </p>
+                </div>
+                <div class="slide-no">01 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> docker-compose up</div>
+                    <h2>Architecture</h2>
+                    <p class="subtitle">All business logic in src/. The UI computes nothing.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="cols wide-left">
+                    <div class="reveal"><div class="mono-block"><span class="ok">React + nginx</span>        no logic, HTTP client only
+      |
+      v  /api/*
+<span class="ok">FastAPI</span>              thin wrapper: validates, shapes
+      |
+      +--------------+--------------+
+      v              v              v
+ <span class="key">src/ml</span>         <span class="key">src/data</span>       <span class="key">src/talk_to_data</span>
+ model, SHAP,   loader,        NL to SQL,
+ rules, audits  preprocess     validation, memory
+      |              |              |
+      +--------------+--------------+
+                     v
+               <span class="ok">PostgreSQL</span>
+   application_train, bureau, previous_application</div></div>
+                    <div class="stack reveal">
+                        <div class="panel">
+                            <div class="panel-label">four services, one command</div>
+                            <ul><li><strong>postgres</strong> &mdash; healthchecked</li><li><strong>loader</strong> &mdash; one-shot, idempotent</li><li><strong>api</strong> &mdash; waits on both</li><li><strong>frontend</strong> &mdash; waits on api health</li></ul>
+                        </div>
+                        <p class="note">No flags, no override file. Startup races are the
+                        usual reason a submission does not run on someone else's machine,
+                        so the dependency conditions are load-bearing rather than
+                        decorative.</p>
+                    </div>
+                </div>
+                <div class="slide-no">02 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> python -m src.ml.evaluate</div>
+                    <h2>From score to decision</h2>
+                    <p class="subtitle">Calibration first, then cost. The second is meaningless without the first.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="cols reveal">
+                    <div class="stack">
+                        <div class="panel">
+                            <div class="panel-label">1 &mdash; the raw output is not a probability</div>
+                            <p>Training with <code>scale_pos_weight = 11.39</code>
+                            multiplies the predicted odds by that weight. An average applicant
+                            scores near 0.5, not near 0.08.</p>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-label">2 &mdash; a known constant, so inverted exactly</div>
+                            <div class="mono-block" style="font-size:20px;">p_true = p_w / (p_w + w(1 - p_w))</div>
+                            <p class="note" style="margin-top:14px;">A weighted 0.5 maps back to
+                            1/(1+w) = <span class="ok">0.0807</span>,
+                            the measured default rate. That identity is asserted in the test suite.</p>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <div class="panel warn">
+                            <div class="panel-label">3 &mdash; only now does a cost threshold mean anything</div>
+                            <p>A false negative is a defaulted loan; a false positive is a good
+                            customer refused. Assumed <strong>10:1</strong>.
+                            Threshold minimises 10&middot;FN + FP.</p>
+                        </div>
+                        <table><thead><tr><th class="">Threshold</th><th class="num">Flagged</th><th class="num">Recall</th><th class="num">Precision</th><th class="num">Cost</th></tr></thead><tbody><tr><td class="">Naive 0.5</td><td class="num">0.0%</td><td class="num">0.002</td><td class="num">0.659</td><td class="num">247,681</td></tr><tr class="hi"><td class="">Cost-optimal 0.0837</td><td class="num">28.9%</td><td class="num">0.644</td><td class="num">0.180</td><td class="num">161,314</td></tr></tbody></table>
+                        <p class="note good">Catching 64.4% of defaulters
+                        instead of 0.2%. Expected cost down
+                        34.9%.</p>
+                    </div>
+                </div>
+                <div class="slide-no">03 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> python -m src.ml.threshold_sensitivity</div>
+                    <h2>Risk bands, and what they rest on</h2>
+                    <p class="subtitle">The two boundaries answer different questions, and one of them is an assumption.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="cols reveal">
+                    <div class="stack">
+                        <table><thead><tr><th class="">Boundary</th><th class="num">Value</th><th class="num">How it is set</th></tr></thead><tbody><tr><td class="">t_high  Medium/High</td><td class="num">0.0837</td><td class="num">Cost-optimal</td></tr><tr><td class="">t_low  Low/Medium</td><td class="num">0.0341</td><td class="num">Business judgment</td></tr></tbody></table>
+                        <p>Above <code>t_high</code> the expected cost of approving exceeds
+                        the cost of refusing. Where automatic approval should <em>stop</em> is
+                        a matter of review capacity, which nothing in the data answers, so
+                        <code>t_low</code> is exposed as a policy dial rather than presented
+                        as a computed result.</p>
+                        <div class="panel warn">
+                            <div class="panel-label">how much rests on the 10:1 assumption</div>
+                            <p class="note alert" style="font-size:22px;">
+                            <strong>t_high moves 0.0407 to
+                            0.2284</strong> &mdash; a spread of
+                            224% of the shipped value.
+                            Only <strong>51.5%</strong> of applicants
+                            keep the same band across the range.</p>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <table><thead><tr><th class="">Cost ratio</th><th class="num">t_high</th><th class="num">Approve</th><th class="num">Caught</th></tr></thead><tbody><tr><td class="">3:1</td><td class="num">0.2284</td><td class="num">94.9%</td><td class="num">5,215</td></tr><tr><td class="">4:1</td><td class="num">0.1874</td><td class="num">91.5%</td><td class="num">7,465</td></tr><tr><td class="">5:1</td><td class="num">0.1615</td><td class="num">88.6%</td><td class="num">9,172</td></tr><tr><td class="">6:1</td><td class="num">0.1218</td><td class="num">81.9%</td><td class="num">12,316</td></tr><tr><td class="">8:1</td><td class="num">0.1068</td><td class="num">78.4%</td><td class="num">13,637</td></tr><tr class="hi"><td class="">10:1</td><td class="num">0.0837</td><td class="num">71.1%</td><td class="num">15,979</td></tr><tr><td class="">12:1</td><td class="num">0.0689</td><td class="num">64.8%</td><td class="num">17,624</td></tr><tr><td class="">15:1</td><td class="num">0.0561</td><td class="num">57.8%</td><td class="num">19,182</td></tr><tr><td class="">20:1</td><td class="num">0.0407</td><td class="num">46.4%</td><td class="num">21,150</td></tr></tbody></table>
+                        <p class="note good">Every ratio still beats 0.5. The method survives
+                        where the number does not; what is uncertain is where to put the
+                        threshold, not whether 0.5 is wrong. It is.</p>
+                    </div>
+                </div>
+                <div class="slide-no">04 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> python -m tests.run_chatbot_variance</div>
+                    <h2>Talk-to-data, measured like a model</h2>
+                    <p class="subtitle">44 held-out questions written after the prompt was frozen. Run five times.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="cols reveal">
+                    <div class="stack">
+                        <div class="figure-row">
+                            <div class="figure"><div class="value ">38.4</div><div class="label">mean of 44</div></div>
+                            <div class="figure"><div class="value neutral">37&ndash;40</div><div class="label">range</div></div>
+                            <div class="figure"><div class="value neutral">36</div><div class="label">stable at 5/5</div></div>
+                        </div>
+                        <div class="mono-block">runs   39  37  40  39  37   out of 44
+sd     1.34
+<span class="no">fail</span>   H35, H36  (every run)</div>
+                        <p class="note">Development set: 30/30. It was tuned on the failures
+                        it exposed, so its 100% is optimistic by construction.</p>
+                    </div>
+                    <div class="stack">
+                        <div class="panel">
+                            <div class="panel-label">the score is a distribution, not a number</div>
+                            <p>A single run once scored 19/20 and was reported as the result. It was the best of five. Quoting the good draw is how an evaluation
+                            flatters itself, which is why this is now run five times and
+                            reported as a spread.</p>
+                        </div>
+                        <div class="panel warn">
+                            <div class="panel-label">two failures are mine, not the model's</div>
+                            <p class="note">H35's reference counts ids in <code>bureau</code>
+                            where the model joins to <code>application_train</code> first &mdash;
+                            the model's reading is better. H36 asks it to exclude sentinel codes
+                            the schema never identifies. Reported, not repaired: fixing a
+                            reference after watching the model disagree is fitting the grader
+                            to the outcome.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-no">05 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> src/talk_to_data/query_runner.py</div>
+                    <h2>Refusing is a feature</h2>
+                    <p class="subtitle">Two independent mechanisms: a hard gate, and a sanctioned way to decline.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="stack reveal">
+                    <div class="cols">
+                        <div class="stack">
+                            <div class="panel">
+                                <div class="panel-label">structured output</div>
+                                <p>One model call returns an action: <code>sql</code>,
+                                <code>refuse</code>, or <code>clarify</code>. A model with no
+                                sanctioned way to say "I cannot" invents a column to fill the
+                                silence.</p>
+                            </div>
+                            <div class="panel">
+                                <div class="panel-label">validation gate</div>
+                                <p>Every generated statement is parsed, not string-matched.
+                                Single SELECT, whitelisted tables, columns checked against the
+                                live schema, LIMIT forced, 10s timeout, executed as a role
+                                holding SELECT and nothing else.</p>
+                            </div>
+                        </div>
+                        <div class="stack">
+                            <div class="mono-block"><span class="no">Rejected</span>   WITH x AS (DELETE FROM application_train RETURNING sk_id_curr)
+          SELECT count(*) FROM x
+
+<span class="ok">Allowed</span>    SELECT count(*) FROM application_train
+          WHERE occupation_type = 'Delete'</div>
+                            <p class="note good">A DELETE hidden inside a CTE is rejected. The
+                            literal string 'Delete' is not. String matching gets both of these
+                            wrong; parsing the tree gets both right.</p>
+                        </div>
+                    </div>
+                    <div class="panel warn">
+                        <div class="panel-label">the limit of it</div>
+                        <p class="note">Querying a column that does not exist is impossible &mdash;
+                        a hard guarantee. Declining a question unanswerable <em>from columns that
+                        do</em> is a model judgement: over ten runs H8 declined seven times, and
+                        H44 answers a causal question as an association four times in five.</p>
+                    </div>
+                </div>
+                <div class="slide-no">06 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> src/data/preprocessor.py</div>
+                    <h2>Fair lending</h2>
+                    <p class="subtitle">Five protected attributes excluded. One of them got back in anyway.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="cols reveal">
+                    <div class="stack">
+                        <table><thead><tr><th class="">Excluded</th><th class="">Protected basis</th></tr></thead><tbody><tr><td class="">code_gender</td><td class="">Sex</td></tr><tr><td class="">name_family_status</td><td class="">Marital status</td></tr><tr><td class="">age_years</td><td class="">Age</td></tr><tr><td class="">cnt_children</td><td class="">Familial status</td></tr><tr><td class="">cnt_fam_members</td><td class="">Familial status</td></tr></tbody></table>
+                        <p class="note">ECOA names sex, marital status and age as protected
+                        bases. A model that prices or refuses credit on them is a legal failure
+                        however well it performs.</p>
+                    </div>
+                    <div class="stack">
+                        <table><thead><tr><th class="">Feature set</th><th class="num">ROC-AUC</th><th class="num">PR-AUC</th></tr></thead><tbody><tr><td class="">With protected</td><td class="num">0.7651</td><td class="num">0.2491</td></tr><tr class="hi"><td class="">Without (shipped)</td><td class="num">0.7614</td><td class="num">0.2427</td></tr></tbody></table>
+                        <p class="note good">Cost of exclusion:
+                        0.0037 ROC-AUC. There is no
+                        meaningful accuracy argument for keeping them.</p>
+                        <div class="panel warn">
+                            <div class="panel-label">exclusion did not hold</div>
+                            <p class="note"><strong>15 features are a
+                            material proxy</strong> for at least one excluded attribute. Age is
+                            the worst: 12 material,
+                            5 strong.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-no">07 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> python -m src.ml.proxy_detection</div>
+                    <h2>Systematic proxy detection</h2>
+                    <p class="subtitle">All 120 features scored against each excluded attribute.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="cols wide-left reveal">
+                    <div class="stack">
+                        <div class="panel-label">features that reconstruct age, all 307,511 applicants</div>
+                        <div class="bar-row"><div class="name">organization_type</div><div class="bar-track"><div class="bar-fill" style="width:100.0%"></div></div><div class="val">0.637</div></div><div class="bar-row"><div class="name">name_income_type</div><div class="bar-track"><div class="bar-fill" style="width:97.4%"></div></div><div class="val">0.620</div></div><div class="bar-row"><div class="name">ext_source_1</div><div class="bar-track"><div class="bar-fill" style="width:94.2%"></div></div><div class="val">0.600</div></div><div class="bar-row"><div class="name">days_employed_anomalous</div><div class="bar-track"><div class="bar-fill" style="width:94.2%"></div></div><div class="val">0.600</div></div><div class="bar-row"><div class="name">flag_emp_phone</div><div class="bar-track"><div class="bar-fill" style="width:94.1%"></div></div><div class="val">0.600</div></div><div class="bar-row"><div class="name">flag_document_6</div><div class="bar-track"><div class="bar-fill" style="width:61.7%"></div></div><div class="val">0.393</div></div><div class="bar-row"><div class="name">days_employed</div><div class="bar-track"><div class="bar-fill" style="width:48.3%"></div></div><div class="val">0.307</div></div>
+                        <p class="note">Thresholds fixed in the module before the first run:
+                        material at 0.20, strong at
+                        0.50. A cutoff chosen after seeing the
+                        ranking describes the output rather than judging it.</p>
+                    </div>
+                    <div class="stack">
+                        <div class="panel warn">
+                            <div class="panel-label">neither method alone was enough</div>
+                            <p class="note">This scan would have <strong>missed</strong>
+                            <code>employed_life_ratio</code>: it predicts age at only
+                            0.074, far below the floor, yet
+                            varying <code>days_birth</code> alone moves the score for 71.8% of
+                            applicants who have a <code>days_employed</code> value and
+                            <strong>0.0%</strong> of those who do not.</p>
+                            <p class="note" style="margin-top:14px;">Hand-inspection found that
+                            one and none of the 12. Running both
+                            produced the full picture.</p>
+                        </div>
+                        <div class="panel plain">
+                            <div class="panel-label">the uncomfortable one</div>
+                            <p class="note"><code>ext_source_1</code> reconstructs age at
+                            0.600 and is the third most important
+                            feature in the model. Excluding age here does not exclude it from
+                            whatever the external bureau is scoring.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-no">08 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> python -m src.ml.fairness_audit</div>
+                    <h2>Fair lending: disparate impact</h2>
+                    <p class="subtitle">Every applicant scored, threshold 0.083669, approval rate 70.39%.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="cols reveal">
+                    <div class="stack">
+                        <div class="panel-label">age band &mdash; the worst-failing attribute</div>
+                        <table><thead><tr><th class="">Age band</th><th class="num">n</th><th class="num">Approved</th><th class="num">Observed default</th></tr></thead><tbody><tr><td class="">under 30</td><td class="num">45,186</td><td class="num">0.4873</td><td class="num">0.1144</td></tr><tr><td class="">30-45</td><td class="num">123,737</td><td class="num">0.6807</td><td class="num">0.0900</td></tr><tr><td class="">45-60</td><td class="num">103,287</td><td class="num">0.7698</td><td class="num">0.0656</td></tr><tr><td class="">60+</td><td class="num">35,301</td><td class="num">0.8698</td><td class="num">0.0492</td></tr></tbody></table>
+                    </div>
+                    <div class="stack">
+                        <table><thead><tr><th class="">Attribute</th><th class="num">4/5 ratio</th><th class="num">Result</th></tr></thead><tbody><tr><td class="">code_gender</td><td class="num">0.8528</td><td class="num"><span class="chip pass">PASS</span></td></tr><tr><td class="">age_band</td><td class="num">0.5602</td><td class="num"><span class="chip fail">FAIL</span></td></tr><tr><td class="">name_family_status</td><td class="num">0.7885</td><td class="num"><span class="chip fail">FAIL</span></td></tr></tbody></table>
+                        <p class="note alert">Below 0.8: age_band, name_family_status</p>
+                        <div class="panel warn">
+                            <div class="panel-label">a screen, not a verdict</div>
+                            <p class="note">Disparate impact in the legal sense requires a
+                            business-necessity analysis and a search for a less-discriminatory
+                            alternative. Neither is performed here. Observed default rates move
+                            with the approval rates, so the model tracks a real pattern through
+                            whatever it can reach &mdash; whether that justifies the disparity
+                            is exactly the analysis not done.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-no">09 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> POST /adverse-action</div>
+                    <h2>Adverse action reason codes</h2>
+                    <p class="subtitle">ECOA requires the specific principal reasons for a denial, not a score.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="stack reveal">
+                    <table><thead><tr><th class="">#</th><th class="">Reason given to applicant 100002</th><th class="">Driven by</th><th class="num">SHAP</th></tr></thead><tbody><tr><td class="">1</td><td class="">Credit assessment obtained from an external credit bureau</td><td class="">ext_source_1/2/3</td><td class="num">0.847</td></tr><tr><td class="">2</td><td class="">Length of the repayment term relative to the amount requested</td><td class="">credit_term</td><td class="num">0.221</td></tr><tr><td class="">3</td><td class="">Value of the goods financed relative to the credit requested</td><td class="">amt_goods_price</td><td class="num">0.159</td></tr><tr><td class="">4</td><td class="">Length of time in your current employment</td><td class="">days_employed</td><td class="num">0.088</td></tr></tbody></table>
+                    <div class="cols" style="margin-top:8px;">
+                        <div class="panel">
+                            <div class="panel-label">why the phrases are fixed in source</div>
+                            <p class="note">A regulated disclosure must produce the same words
+                            for the same input, and a notice that cannot be reviewed before it
+                            is sent cannot be signed off. Four maximum, per Regulation B.
+                            Duplicates collapse &mdash; three bureau scores are one reason to an
+                            applicant. An applicant below the threshold gets no notice, and the
+                            reasons are not computed rather than computed and hidden.</p>
+                        </div>
+                        <div class="panel warn">
+                            <div class="panel-label">what it is not</div>
+                            <p class="note">Still SHAP attributions shaped as reasons, not a
+                            rule-based engine working from the credit policy. Some features are
+                            never disclosed at all &mdash; appointment timing, the geographic
+                            columns, and the social-circle columns that describe other people's
+                            conduct &mdash; and the response names what it withheld rather than
+                            dropping it silently.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-no">10 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> python -m src.ml.train</div>
+                    <h2>Model selection</h2>
+                    <p class="subtitle">Two models, identical inputs, 5-fold stratified cross-validation.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="cols reveal">
+                    <div class="stack">
+                        <table><thead><tr><th class="">Model</th><th class="num">ROC-AUC</th><th class="num">PR-AUC</th></tr></thead><tbody><tr class="hi"><td class="">LightGBM (shipped)</td><td class="num">0.7614 &plusmn; 0.0026</td><td class="num">0.2441 &plusmn; 0.0008</td></tr><tr><td class="">Logistic regression</td><td class="num">0.7438 &plusmn; 0.0026</td><td class="num">0.2181 &plusmn; 0.0031</td></tr></tbody></table>
+                        <p>LightGBM wins by 0.0176 ROC-AUC &mdash; real, being
+                        several times the fold standard deviation, but less than a headline
+                        would suggest. A logistic regression gets within 2.4% of a
+                        gradient-boosted ensemble on this data.</p>
+                        <p class="note">That is a finding, not a disappointment. Logistic
+                        regression is what banks deploy under regulatory pressure, because a
+                        coefficient per feature is auditable in a way an ensemble is not.</p>
+                    </div>
+                    <div class="stack">
+                        <div class="panel">
+                            <div class="panel-label">why LightGBM is served anyway</div>
+                            <ul><li>SHAP <strong>TreeExplainer</strong> is exact and fast on trees</li><li>Rule derivation is naturally a shallow tree</li><li>NaN and categoricals handled natively, so no imputation</li></ul>
+                        </div>
+                        <div class="panel plain">
+                            <div class="panel-label">class imbalance</div>
+                            <p class="note"><code>scale_pos_weight</code> =
+                            11.39, computed from each training split
+                            rather than hardcoded. SMOTE was not used: at this row count it is
+                            slow and addresses the same problem less directly. PR-AUC is
+                            reported alongside ROC-AUC everywhere, because on a target this
+                            imbalanced ROC-AUC alone flatters a model.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-no">11 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> notebooks/eda.ipynb</div>
+                    <h2>What the data says</h2>
+                    <p class="subtitle">Five insights, computed server-side and served from a single source.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="stack reveal">
+                    <div class="figure-row">
+                        <div class="figure"><div class="value neutral">307,511</div><div class="label">applications</div></div>
+                        <div class="figure"><div class="value ">8.07%</div><div class="label">default rate</div></div>
+                        <div class="figure"><div class="value neutral">11.4:1</div><div class="label">imbalance</div></div>
+                        <div class="figure"><div class="value neutral">122</div><div class="label">columns, 67 with gaps</div></div>
+                    </div>
+                    <div class="cols" style="margin-top:12px;">
+                        <div class="panel">
+                            <div class="panel-label">the defect that mattered most</div>
+                            <p class="note">18.0% of applicants have
+                            <code>days_employed</code> set to 365243 &mdash; roughly 1,000 years.
+                            It encodes "not currently employed" rather than a duration. Left
+                            untreated it corrupts every statistic built on the column.</p>
+                            <p class="note" style="margin-top:12px;"><strong>So what:</strong>
+                            those applicants default at 5.4% against 8.7% for the rest, so the
+                            flag is predictive and is kept as a feature rather than discarded.</p>
+                        </div>
+                        <div class="panel plain">
+                            <div class="panel-label">four more, served from one place</div>
+                            <ul><li>External credit scores separate risk more than anything self-reported</li><li>Education level tracks default risk strongly</li><li>Borrowing a lot relative to income does <strong>not</strong> predict default</li><li>Younger applicants default substantially more often</li></ul>
+                        </div>
+                    </div>
+                    <p class="note">Every figure here is computed by the same module the API
+                    and the notebook call, so the deck, the UI and the analysis cannot quote
+                    different numbers for the same finding.</p>
+                </div>
+                <div class="slide-no">12 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> python -m src.ml.shap_full</div>
+                    <h2>Explainability</h2>
+                    <p class="subtitle">SHAP TreeExplainer. Exact on tree models rather than approximated.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="cols wide-left reveal">
+                    <div class="stack">
+                        <div class="panel-label">global importance &mdash; mean |SHAP|, all 307,511 applicants</div>
+                        <div class="bar-row"><div class="name">external credit score 3</div><div class="bar-track"><div class="bar-fill" style="width:100.0%"></div></div><div class="val">0.370</div></div><div class="bar-row"><div class="name">external credit score 2</div><div class="bar-track"><div class="bar-fill" style="width:92.8%"></div></div><div class="val">0.343</div></div><div class="bar-row"><div class="name">loan term</div><div class="bar-track"><div class="bar-fill" style="width:54.9%"></div></div><div class="val">0.203</div></div><div class="bar-row"><div class="name">external credit score 1</div><div class="bar-track"><div class="bar-fill" style="width:47.8%"></div></div><div class="val">0.177</div></div><div class="bar-row"><div class="name">price of the goods financed</div><div class="bar-track"><div class="bar-fill" style="width:41.2%"></div></div><div class="val">0.152</div></div><div class="bar-row"><div class="name">employer type</div><div class="bar-track"><div class="bar-fill" style="width:35.2%"></div></div><div class="val">0.130</div></div><div class="bar-row"><div class="name">length of employment</div><div class="bar-track"><div class="bar-fill" style="width:26.0%"></div></div><div class="val">0.096</div></div><div class="bar-row"><div class="name">age of car owned</div><div class="bar-track"><div class="bar-fill" style="width:25.1%"></div></div><div class="val">0.093</div></div>
+                    </div>
+                    <div class="stack">
+                        <div class="panel">
+                            <div class="panel-label">exhaustive, and it changed nothing</div>
+                            <p class="note">Previously a 2,000-row sample,
+                            listed as a limitation. Recomputed over the whole population in
+                            chunks: the top 20 order is
+                            <strong>identical</strong>
+                            and the rank correlation across all 120 features is
+                            <strong>0.9990</strong>.</p>
+                            <p class="note" style="margin-top:12px;">That is a finding, not a
+                            null result: the sample was adequate, and every SHAP figure
+                            previously reported was already correct.</p>
+                        </div>
+                        <div class="panel plain">
+                            <div class="panel-label">per prediction</div>
+                            <p class="note">Endpoints return JSON, never a rendered image, so
+                            the UI owns presentation and the frontend stays replaceable. Each
+                            explanation carries a plain-English narrative generated
+                            deterministically from a label map &mdash; it cannot invent a reason
+                            the model did not use.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-no">13 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> GET /rules</div>
+                    <h2>Derived credit rules</h2>
+                    <p class="subtitle">A depth-3 surrogate short enough to sit in a policy document.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="stack reveal">
+                    <table><thead><tr><th class="">Rule</th><th class="">Condition</th><th class="num">Applicants</th><th class="num">Default rate</th><th class="num">Lift</th></tr></thead><tbody><tr><td class="">R1</td><td class="">external credit score 2 is at most 0.460 and external credit score 3 is at...</td><td class="num">5.5%</td><td class="num">24.1%</td><td class="num">2.98x</td></tr><tr><td class="">R2</td><td class="">external credit score 2 is above 0.460 and external credit score 3 is at m...</td><td class="num">4.4%</td><td class="num">15.6%</td><td class="num">1.93x</td></tr><tr><td class="">R3</td><td class="">external credit score 2 is at most 0.460 and external credit score 3 is ab...</td><td class="num">15.5%</td><td class="num">13.7%</td><td class="num">1.70x</td></tr><tr><td class="">R4</td><td class="">external credit score 2 is at most 0.248 and external credit score 3 is ab...</td><td class="num">3.9%</td><td class="num">9.9%</td><td class="num">1.23x</td></tr><tr><td class="">R5</td><td class="">external credit score 2 is above 0.460 and external credit score 3 is abov...</td><td class="num">5.4%</td><td class="num">9.5%</td><td class="num">1.18x</td></tr><tr><td class="">R6</td><td class="">external credit score 2 is above 0.460 and external credit score 3 is abov...</td><td class="num">30.1%</td><td class="num">5.9%</td><td class="num">0.73x</td></tr></tbody></table>
+                    <div class="cols" style="margin-top:10px;">
+                        <div class="panel">
+                            <div class="panel-label">two sets, because one is not usable</div>
+                            <p class="note">The faithful set agrees with the model on
+                            <strong>79.8%</strong> of applicants but
+                            keys almost entirely off external bureau scores, so it says little a
+                            credit officer can act on. The policy set excludes those scores:
+                            71.4% agreement, and rules that still
+                            apply to an applicant with no bureau history.</p>
+                        </div>
+                        <div class="panel plain">
+                            <div class="panel-label">honest about what they are</div>
+                            <p class="note">A depth-3 surrogate tree approximating the model's
+                            behaviour. These are a readable approximation for credit policy,
+                            <strong>not the model itself</strong>, and the gap is where a
+                            rule-based decision would differ from a scored one. Leaf statistics
+                            are counted from the data rather than read off the tree's internal
+                            values, which are reweighted.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-no">14 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> pytest</div>
+                    <h2>Engineering</h2>
+                    <p class="subtitle">Verified against a running stack, not asserted.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="cols reveal">
+                    <div class="stack">
+                        <div class="panel">
+                            <div class="panel-label">docker</div>
+                            <p class="note">Four services. Postgres healthchecked; the loader
+                            waits for healthy and the API waits for the loader to exit
+                            successfully. Verified by cloning this repository into a fresh
+                            directory and building with <code>--no-cache</code>.</p>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-label">security</div>
+                            <p class="note">The chatbot connects as a role holding SELECT on
+                            three tables and nothing else. Verified: INSERT, CREATE and DROP are
+                            all refused by Postgres. The LLM key is scoped to the api service
+                            and never reaches the UI container.</p>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <div class="panel">
+                            <div class="panel-label">176 tests, no database needed</div>
+                            <p class="note">The validation gate, the train/serve skew guard, the
+                            calibration identity, path resolution, four-fifths arithmetic, proxy
+                            statistics, adverse action disclosure, and the API contracts &mdash;
+                            one of which feeds a row carrying every protected attribute through
+                            the real serving path and asserts none reaches a SHAP
+                            contribution.</p>
+                        </div>
+                        <div class="panel plain">
+                            <div class="panel-label">token cost</div>
+                            <p class="note">The schema block is 1,656 tokens, not the ~6,000 a
+                            full dump would be. Caching is wired but measured not to engage:
+                            Haiku 4.5 needs a 4,096-token prefix. Confirmed by padding to 7,393
+                            tokens and watching the cache write, then read.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-no">15 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> cat README.md | grep -A40 'Known limitations'</div>
+                    <h2>What this is not</h2>
+                    <p class="subtitle">The limitations that would matter to someone deciding whether to trust it.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="cols reveal">
+                    <div class="stack">
+                        <div class="panel warn">
+                            <div class="panel-label">fair lending is incomplete</div>
+                            <p class="note">Two of three attributes fail the four-fifths screen
+                            and 15 features are material proxies for an
+                            excluded attribute. The screen, the proxy scan and the reason codes
+                            are built; the business-necessity analysis that would interpret
+                            them is not, nor is multivariate proxy detection or reject
+                            inference.</p>
+                        </div>
+                        <div class="panel warn">
+                            <div class="panel-label">the cost ratio decides half the book</div>
+                            <p class="note">10:1 is an assumption. It is now a
+                            bounded one, and the bound is wide: only
+                            51.5% of applicants keep their band across
+                            3:1 to 20:1.</p>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <div class="panel warn">
+                            <div class="panel-label">the model ignores two of three tables</div>
+                            <p class="note"><code>bureau</code> and
+                            <code>previous_application</code> serve the chatbot only. Prior
+                            credit history is the largest improvement available, worth roughly
+                            0.02&ndash;0.03 ROC-AUC in published work.</p>
+                        </div>
+                        <div class="panel warn">
+                            <div class="panel-label">the evaluation is self-authored</div>
+                            <p class="note">44 questions written by the person who
+                            wrote the prompt, and two of the failures are defects in those
+                            questions rather than model failures. An independently authored set
+                            is the next step.</p>
+                        </div>
+                        <div class="panel warn">
+                            <div class="panel-label">no automated UI coverage</div>
+                            <p class="note">The 176 tests cover <code>src/</code> and the
+                            <code>app/</code> contracts. The React UI is verified by hand.
+                            Conversation memory is in-process and dies on restart.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-no">16 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> open http://localhost:5173</div>
+                    <h2>Data understanding</h2>
+                    <p class="subtitle">Dataset summary, the five insights, and the distribution explorer.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="reveal" style="margin-top:-14px;">
+                    <img class="shot" src="screenshots/eda.jpg" alt="Data understanding">
+                </div>
+                <div class="slide-no">17 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> open http://localhost:5173</div>
+                    <h2>Risk prediction</h2>
+                    <p class="subtitle">Score with band and recommended action.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="reveal" style="margin-top:-14px;">
+                    <img class="shot" src="screenshots/prediction.jpg" alt="Risk prediction">
+                </div>
+                <div class="slide-no">18 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> open http://localhost:5173</div>
+                    <h2>Why this decision</h2>
+                    <p class="subtitle">SHAP contributions and the plain-English narrative.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="reveal" style="margin-top:-14px;">
+                    <img class="shot" src="screenshots/explain.jpg" alt="Why this decision">
+                </div>
+                <div class="slide-no">19 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> open http://localhost:5173</div>
+                    <h2>Derived rules</h2>
+                    <p class="subtitle">Both rule sets with support, default rate and lift.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="reveal" style="margin-top:-14px;">
+                    <img class="shot" src="screenshots/rules.jpg" alt="Derived rules">
+                </div>
+                <div class="slide-no">20 / 21</div>
+            </section>
+            <section class="slide">
+                <div class="slide-head reveal">
+                    <div class="prompt"><span class="sigil">$</span> open http://localhost:5173</div>
+                    <h2>Ask the data</h2>
+                    <p class="subtitle">Generated SQL is shown, not hidden.</p>
+                    <div class="rule"></div>
+                </div>
+                <div class="reveal" style="margin-top:-14px;">
+                    <img class="shot" src="screenshots/chat.jpg" alt="Ask the data">
+                </div>
+                <div class="slide-no">21 / 21</div>
+            </section>
+
+        </main>
+    </div>
+    <div class="progress" id="progress"></div>
+    <script>
+/* ===========================================================================
+   SLIDE CONTROLLER
+   Scales the fixed stage to the window, and drives navigation by keyboard,
+   wheel, and touch. Nothing here reflows a slide: the only geometry change
+   is one transform on the stage.
+   =========================================================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides   = Array.from(document.querySelectorAll('.slide'));
+        this.stage    = document.getElementById('deckStage');
+        this.progress = document.getElementById('progress');
+        this.current  = 0;
+
+        this.setupStageScale();
+        this.setupKeyboardNav();
+        this.setupWheelNav();
+        this.setupTouchNav();
+        this.show(0);
+    }
+
+    /* Uniform scale + centring. Letterboxes on tall windows, pillarboxes on
+       wide ones. Never re-lays-out the slide. */
+    setupStageScale() {
+        const scale = () => {
+            const f = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            const x = (window.innerWidth  - 1920 * f) / 2;
+            const y = (window.innerHeight - 1080 * f) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${f})`;
+        };
+        scale();
+        window.addEventListener('resize', scale);
+    }
+
+    setupKeyboardNav() {
+        document.addEventListener('keydown', (e) => {
+            const forward = ['ArrowRight', 'ArrowDown', ' ', 'PageDown'];
+            const back    = ['ArrowLeft', 'ArrowUp', 'PageUp'];
+            if (forward.includes(e.key)) { e.preventDefault(); this.next(); }
+            else if (back.includes(e.key)) { e.preventDefault(); this.prev(); }
+            else if (e.key === 'Home') { e.preventDefault(); this.show(0); }
+            else if (e.key === 'End')  { e.preventDefault(); this.show(this.slides.length - 1); }
+        });
+    }
+
+    /* Throttled, or a single trackpad flick skips five slides. */
+    setupWheelNav() {
+        let locked = false;
+        window.addEventListener('wheel', (e) => {
+            if (locked || Math.abs(e.deltaY) < 18) return;
+            locked = true;
+            e.deltaY > 0 ? this.next() : this.prev();
+            setTimeout(() => { locked = false; }, 480);
+        }, { passive: true });
+    }
+
+    setupTouchNav() {
+        let startX = 0, startY = 0;
+        window.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        }, { passive: true });
+        window.addEventListener('touchend', (e) => {
+            const dx = e.changedTouches[0].clientX - startX;
+            const dy = e.changedTouches[0].clientY - startY;
+            if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) {
+                dx < 0 ? this.next() : this.prev();
+            }
+        }, { passive: true });
+    }
+
+    next() { this.show(this.current + 1); }
+    prev() { this.show(this.current - 1); }
+
+    show(i) {
+        this.current = Math.max(0, Math.min(i, this.slides.length - 1));
+        this.slides.forEach((s, n) => s.classList.toggle('active', n === this.current));
+        const pct = ((this.current + 1) / this.slides.length) * 100;
+        this.progress.style.width = pct + '%';
+        if (location.hash !== '#' + (this.current + 1)) {
+            history.replaceState(null, '', '#' + (this.current + 1));
+        }
+    }
+}
+
+const deck = new SlidePresentation();
+
+/* Deep link: /slides.html#7 opens slide 7. */
+const fromHash = parseInt((location.hash || '').slice(1), 10);
+if (!Number.isNaN(fromHash)) deck.show(fromHash - 1);
+
+/* Hook the PDF exporter uses to force one slide visible at a time. */
+window.__deckShow = (i) => deck.show(i);
+window.__deckCount = deck.slides.length;
+</script>
+</body>
+</html>
