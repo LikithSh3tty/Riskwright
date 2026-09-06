@@ -75,7 +75,7 @@ src/
 app/                      FastAPI. A thin wrapper over src/, no business logic.
 frontend/                 React client, nginx served. Calls HTTP endpoints only.
 sql/schema.sql            Generated DDL for the three loaded tables
-configs/                  Configuration and the official column glossary
+configs/                  Configuration, and the Kaggle column dictionary (metadata, not rows)
 models/                   Saved model artifacts and every measured figure (below)
 tests/                    Unit tests and the chatbot evaluation set
 ```
@@ -195,6 +195,17 @@ iCloud. Sync clients hold file locks that break Docker bind mounts, and you do n
 of CSV syncing to the cloud either.
 
 The dataset is never committed to git.
+
+**One Kaggle file is committed, and it is not data.**
+`configs/columns_description.csv` is the competition's own data dictionary: 37KB, 219 rows,
+one row per *column definition* across the seven tables, with the fields `Table`, `Row`,
+`Description` and `Special`. It contains no applicant records. It is committed because the
+chatbot's schema context reads it &mdash; sending the model a real definition is what stops it
+reading `days_birth` as a date. Removing it is not cosmetic: the schema block loses every
+column description, drops below its documented token floor, and three tests in
+`test_schema_context.py` fail. The submission instruction not to place the dataset in git is
+about `application_train.csv` and its siblings, which are mounted from `DATA_DIR` and ignored
+by `.gitignore`.
 
 ### 2. Configure
 
