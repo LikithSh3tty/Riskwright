@@ -73,7 +73,6 @@ class Settings(BaseSettings):
     # Services
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    api_url: str = "http://api:8000"
     log_level: str = Field(default="INFO")
 
     def dsn(self, read_only: bool = False) -> str:

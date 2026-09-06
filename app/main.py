@@ -25,7 +25,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# The Streamlit UI is a separate container and therefore a separate origin.
+# The React UI is a separate container and therefore a separate origin.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

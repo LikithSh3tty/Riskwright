@@ -8,5 +8,10 @@ httpx==0.28.1
 jupyter==1.1.1
 nbconvert==7.17.1
 
+# eda.ipynb draws with plotly. It is not a runtime dependency: the served
+# frontend charts with Recharts in the browser and the API returns JSON, never
+# a rendered figure.
+plotly==7.0.0
+
 # Presentation generator
 matplotlib==3.11.1

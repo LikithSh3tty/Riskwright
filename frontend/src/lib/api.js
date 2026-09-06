@@ -60,7 +60,7 @@ export const post = (path, body, timeout) => request(path, { method: "POST", bod
 export const del = (path) => request(path, { method: "DELETE" });
 
 /* Endpoints, exactly as the API already exposes them. Nothing here asks for a
- * contract the Streamlit client does not already consume. */
+ * contract the API does not already expose. */
 export const api = {
   health: () => get("/health"),
   edaSummary: () => get("/eda/summary"),

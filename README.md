@@ -19,7 +19,7 @@ Built for the NeoStats AI Engineer assignment.
 | Machine learning layer (default probability, risk band) | done |
 | Explainable AI (SHAP per prediction) | done |
 | Business-readable decision rules | done |
-| Multi-section user interface | done, Streamlit and React |
+| Multi-section user interface | done, React |
 | Dockerized deployment | done |
 
 ## Data loaded
@@ -72,8 +72,7 @@ src/
   talk_to_data/           Natural language to SQL, validation, prompts, memory
   utils/                  Logging, configuration, helpers, container-safe paths
 app/                      FastAPI. A thin wrapper over src/, no business logic.
-ui/                       Streamlit client. Calls HTTP endpoints only.
-frontend/                 Optional React client, nginx served. Same endpoints.
+frontend/                 React client, nginx served. Calls HTTP endpoints only.
 sql/schema.sql            Generated DDL for the three loaded tables
 configs/                  Configuration and the official column glossary
 models/                   Saved model artifacts
@@ -91,7 +90,7 @@ restructure, the following were added:
 | `src/ml/explain.py` | SHAP values per prediction (Part 4) |
 | `src/ml/rules.py` | Rule derivation module (listed under expected deliverables) |
 | `app/` | FastAPI layer, so the UI holds no business logic and stays replaceable |
-| `ui/` | Part 5 requires a UI; the tree names no location for one |
+| `frontend/` | Part 5 requires a UI; the tree names no location for one |
 | `configs/` | Training and application configuration, plus the column glossary |
 | `tests/` | Unit tests and the chatbot evaluation set |
 | `.env.example` | Required by the submission instructions |
@@ -192,18 +191,14 @@ You will need roughly 3GB free for the extracted CSVs and another 2GB for the Po
 docker-compose up
 ```
 
-To also start the optional React frontend, add the override file:
-
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.react.yml up
-```
+That is the whole run path. There are no flags, no override files, and no second command:
+Postgres, the loader, the API, and the React UI all come up from `docker-compose.yml` alone.
 
 Then open:
 
 | Service | URL |
 |---------|-----|
-| Streamlit UI | http://localhost:8501 |
-| React UI (only with the override) | http://localhost:5173 |
+| React UI | http://localhost:5173 |
 | API docs | http://localhost:8000/docs |
 | Health check | http://localhost:8000/health |
 
@@ -253,8 +248,12 @@ python -m src.ml.train --fairness  # cost of excluding protected attributes
 pytest                             # 46 tests, no database needed
 
 uvicorn app.main:app --reload
-streamlit run ui/app.py            # needs API_URL=http://localhost:8000
 ```
+
+The React client is built and served by its own image, so there is no host-side equivalent of
+the API command above. To iterate on it without Docker, run Vite's dev server from
+`frontend/` (`npm install && npm run dev`) with the API running on port 8000; `vite.config.js`
+proxies `/api/*` there, the same path nginx serves in the container.
 
 ---
 
@@ -262,10 +261,10 @@ streamlit run ui/app.py            # needs API_URL=http://localhost:8000
 
 ```
                     +-------------------+
-                    |  Streamlit UI     |   no business logic,
-                    |  (ui/)            |   HTTP client only
+                    |  React UI         |   no business logic,
+                    |  (frontend/)      |   HTTP client only
                     +---------+---------+
-                              | HTTP
+                              | HTTP, via nginx /api/
                     +---------v---------+
                     |  FastAPI          |   thin wrapper,
                     |  (app/)           |   validates and shapes
@@ -298,7 +297,7 @@ could be replaced without touching a line that computes anything.
 | `postgres` | Data store. Has a healthcheck; everything else waits on it. |
 | `loader` | One-shot. Applies the schema, streams the CSVs in, provisions the read-only role, exits. |
 | `api` | FastAPI. Starts only after Postgres is healthy **and** the loader has exited successfully. |
-| `ui` | Streamlit. Starts only after the API's own healthcheck passes. |
+| `frontend` | React bundle served by nginx, which also proxies `/api/*` to the API. Starts only after the API's own healthcheck passes, and carries its own healthcheck. |
 
 The startup ordering is deliberate. A race where the API starts before Postgres accepts
 connections is the most common reason a project like this fails on a machine other than the
@@ -321,7 +320,7 @@ The Anthropic API key is scoped to the `api` service only. It never reaches the 
 | Postgres over SQLite | The chatbot generates real SQL against a real engine, and Compose orchestrates something meaningful rather than a single file. |
 | Three tables, not seven | `application_train`, `bureau`, and `previous_application` support genuine join queries. The remaining four add about 1.9GB of load time and answer no question the assignment asks. |
 | Column names lowercased on load | Postgres folds unquoted identifiers to lowercase. Normalising once at load time means generated SQL never needs quoting, which removes an entire class of LLM error. |
-| Streamlit first, React added after | Streamlit carried the submission; React was added later as an optional upgrade that changes nothing about the API. See below. |
+| React as the single frontend | Streamlit was the development client and was replaced by React before submission. One UI, one run path, one thing for an evaluator to start. See below. |
 | Claude Haiku 4.5 | Cheap enough to iterate prompts heavily, and strong at SQL over a compact schema. A small model is sufficient when the schema sent to it is small. |
 | Exact version pins | The model is trained locally and served in a container. Unpinned scikit-learn or LightGBM between the two silently changes predictions. |
 | Types inferred over the full CSV, not a sample | Several columns are integral in the first 100k rows and fractional later. A sampled schema would fail the COPY halfway through a 400MB file. |
@@ -661,9 +660,10 @@ The breakpoint stays because it costs nothing and starts working if the schema e
 ### Conversation memory
 
 Server-side, keyed by a `session_id` the client sends, held in-process with a one hour TTL and
-a six turn replay window. Deliberately not in Streamlit session state: if history lived in the
-UI, replacing the frontend would mean reimplementing memory and the API could not answer a
-follow-up on its own.
+a six turn replay window. Deliberately not in client state: if history lived in the UI,
+replacing the frontend would mean reimplementing memory and the API could not answer a
+follow-up on its own. That was not hypothetical — the frontend was in fact replaced, and
+memory did not move.
 
 Refusals are replayed too. Without that, the model re-attempts a question it has already
 correctly refused.
@@ -817,9 +817,8 @@ hypothesis, and it is reported because it changes what a policy built on this da
 Five sections, each a pure client of the API. No business logic, no database access and no
 model loading in the UI layer: every value on screen arrived over HTTP.
 
-There are two implementations of these same five sections, Streamlit and React, described
-below. Both consume the same endpoints. The screenshots in the presentation are from the React
-client.
+The client is React, built with Vite and served by nginx. It is the only UI in the stack and
+starts with `docker-compose up`.
 
 | Section | Contents |
 |---------|----------|
@@ -829,42 +828,25 @@ client.
 | Derived rules | Both rule sets with support, default rate, and lift |
 | Ask the data | Chat with generated SQL shown in an expander, results as a table, refusals rendered distinctly |
 
-The Streamlit client draws with Plotly and the React client with Recharts. Neither renders a
-figure on the server: a server-rendered image would put presentation logic behind the API and
-make the frontend hard to replace. Aggregation happens server-side; raw rows never reach the
-browser.
+Charts are drawn with Recharts in the browser. The API never renders a figure: a
+server-rendered image would put presentation logic behind the API and make the frontend hard
+to replace. Aggregation happens server-side; raw rows never reach the browser.
 
-### Two frontends, and why
+### A note on Streamlit
 
-Streamlit came first and is what the submission was built and verified around. The evaluation
-criteria contain no line for frontend quality, so the time that a React build would have taken
-went into the chatbot evaluation harness, the held-out question set, and the fair lending work
-instead, all of which sit against criteria that are scored.
+Streamlit was the development client. It was built first, against the same endpoints, because
+it gets a working multi-section UI up in an afternoon and let the API contract be exercised
+early. It was replaced by React before submission and is no longer part of the project.
 
-A React frontend was then added afterwards as a strict upgrade, once the Streamlit build was
-complete and tagged. It consumes exactly the same endpoints, adds no API surface, and lives
-behind a separate compose file so the original stack is untouched:
-
-```bash
-docker-compose up                    # Postgres, API, Streamlit on 8501
-
-docker-compose -f docker-compose.yml -f docker-compose.react.yml up
-                                     # the same, plus React on 5173
-```
-
-Both UIs can run at once because they bind different ports. `docker-compose.yml` is byte
-identical to the version tagged `v1.2-submission`; the React service is added purely by the
-override file.
+The swap cost one compose service rather than a rewrite, which is the point of the layering:
+the UI holds no business logic, reads every value over HTTP, and keeps conversation state
+server-side behind a session id, so nothing that computes anything had to move.
 
 The React client is Vite plus React, built in a multi-stage Dockerfile and served by nginx,
 which also proxies `/api/*` to the API service. The browser therefore never learns the API's
 host, and no `VITE_*` variable is used: Vite inlines those into the client bundle at build
 time, so the Anthropic key stays in the `api` service where it is set. The built bundle is
 checked for key material as part of the release routine.
-
-That this was cheap to add is the point of the layering. The UI holds no business logic, reads
-every value over HTTP, and keeps conversation state server side behind a session id, so a
-second frontend was a new compose service rather than a rewrite.
 
 ## Presentation
 

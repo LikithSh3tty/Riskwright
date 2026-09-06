@@ -2,7 +2,7 @@
 
 One configured root handler, obtained through get_logger. Modules never call
 logging.basicConfig themselves, which would fight over the root handler when
-uvicorn and Streamlit both start.
+uvicorn starts.
 """
 
 from __future__ import annotations

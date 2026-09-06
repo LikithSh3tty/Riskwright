@@ -148,7 +148,7 @@ def build() -> Path:
         fig, _ = slide(pdf, "Architecture",
                        "All business logic in src/. The UI computes nothing.")
         fig.text(0.06, 0.72,
-                 "  Streamlit or React    no logic, HTTP client only\n"
+                 "  React + nginx         no logic, HTTP client only\n"
                  "        |\n"
                  "        v  HTTP\n"
                  "  FastAPI               thin wrapper: validates, shapes\n"

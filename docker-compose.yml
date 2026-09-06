@@ -1,4 +1,4 @@
-# Riskwright stack: postgres -> loader -> api -> ui
+# Riskwright stack: postgres -> loader -> api -> frontend
 #
 # The dependency conditions are load-bearing, not decoration. A race where the
 # API starts before Postgres accepts connections is the single most common
@@ -80,26 +80,22 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
-  ui:
-    build: .
-    container_name: riskwright-ui
-    command:
-      - streamlit
-      - run
-      - ui/app.py
-      - --server.port=8501
-      - --server.address=0.0.0.0
-      - --server.headless=true
-    environment:
-      # The UI knows one thing about the backend: its URL.
-      API_URL: http://api:8000
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: riskwright-frontend
     ports:
-      - "8501:8501"
+      - "5173:80"
     depends_on:
       api:
         condition: service_healthy
     restart: unless-stopped
+    # No environment block on purpose. Vite inlines VITE_* values into the
+    # built bundle at build time, so anything named here would ship to the
+    # browser. The Anthropic key belongs to the api service and stays there.
+    # The frontend reaches the API only through nginx's /api/ proxy, so the
+    # browser never learns the API's host either.
 
 volumes:
   pgdata:

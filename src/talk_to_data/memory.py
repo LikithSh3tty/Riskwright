@@ -1,6 +1,6 @@
 """Server-side conversation memory.
 
-Keyed by a session id the client sends. Deliberately not in Streamlit's
+Keyed by a session id the client sends. Deliberately not in the client's
 session state: if conversation history lived in the UI, replacing the frontend
 would mean reimplementing memory, and the API would be unable to answer a
 follow-up question on its own.

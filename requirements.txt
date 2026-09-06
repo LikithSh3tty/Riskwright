@@ -29,10 +29,12 @@ sqlglot==30.18.0
 # LLM
 anthropic==1.4.0
 
-# UI
-streamlit==1.63.0
-plotly==7.0.0
-requests==2.34.2
+# No UI dependencies. The frontend is a React bundle built and served by its
+# own image (frontend/Dockerfile), so nothing it needs belongs in the Python
+# image. Streamlit, and the plotly/requests pair that only its client used,
+# were removed when the Streamlit UI was retired; plotly moved to
+# requirements-dev.txt, which is where the EDA notebook that still draws with
+# it belongs.
 
 # Chatbot evaluation set is YAML
 PyYAML==6.0.3

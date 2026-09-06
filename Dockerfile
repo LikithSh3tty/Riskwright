@@ -1,5 +1,6 @@
-# One image, three roles. The loader, the API, and the UI differ only by the
-# command compose gives them, so the layer cache is built once and reused.
+# One image, two roles. The loader and the API differ only by the command
+# compose gives them, so the layer cache is built once and reused. The React
+# frontend has its own image; see frontend/Dockerfile.
 FROM python:3.11-slim
 
 # libgomp1 is LightGBM's OpenMP runtime and is not in the slim base.
@@ -24,12 +25,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # sync locks into the container.
 COPY src/ ./src/
 COPY app/ ./app/
-COPY ui/ ./ui/
 COPY sql/ ./sql/
 COPY configs/ ./configs/
 COPY models/ ./models/
 COPY requirements.txt ./
 
-EXPOSE 8000 8501
+EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

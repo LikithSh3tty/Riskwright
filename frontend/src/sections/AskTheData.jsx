@@ -11,7 +11,7 @@ const SUGGESTIONS = [
 ];
 
 /* The session id lives here and the transcript lives on the server, keyed by
- * it. That is the same contract the Streamlit client uses, and it is why
+ * it. That is the contract the /chat endpoint returns, and it is why
  * swapping the frontend does not mean reimplementing conversation memory. */
 function newSessionId() {
   return `react-${Math.random().toString(36).slice(2, 14)}`;
