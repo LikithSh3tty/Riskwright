@@ -118,10 +118,41 @@ def measure(runs: int, version: str, eval_file: str) -> dict:
     }
 
 
+def prior_history(path) -> list[dict]:
+    """Condense whatever the artifact already holds into a history entry.
+
+    The question set grows, so a later mean is not comparable to an earlier one
+    and replacing the file outright would quietly erase the basis for the
+    figure the README used to quote. Each run keeps its predecessors as
+    summaries: enough to see how the measurement changed and why, without
+    carrying every per-question record forward forever.
+    """
+    if not path.exists():
+        return []
+    previous = json.loads(path.read_text(encoding="utf-8"))
+    history = list(previous.get("prior_history", []))
+    history.append({
+        "generated_at": previous.get("generated_at"),
+        "prompt_version": previous.get("prompt_version"),
+        "questions": previous.get("score", {}).get("total"),
+        "runs": previous.get("runs"),
+        "per_run": [r["passed"] for r in previous.get("per_run", [])],
+        "mean": previous.get("score", {}).get("mean"),
+        "min": previous.get("score", {}).get("min"),
+        "max": previous.get("score", {}).get("max"),
+        "stdev": previous.get("score", {}).get("stdev"),
+        "unstable_questions": previous.get("unstable_questions", []),
+        "always_failed_questions": previous.get("always_failed_questions", []),
+    })
+    return history
+
+
 def save(payload: dict) -> None:
     path = models_dir() / VARIANCE_FILE
+    payload = {**payload, "prior_history": prior_history(path)}
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    log.info("wrote %s", path)
+    log.info("wrote %s (%d prior measurements retained)",
+             path, len(payload["prior_history"]))
 
 
 def main() -> None:

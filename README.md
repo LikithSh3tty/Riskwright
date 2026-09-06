@@ -1089,8 +1089,8 @@ python -m tests.run_chatbot_eval --heldout --versions v4  # held-out set
 python -m tests.run_chatbot_variance --runs 5             # the same set, five times
 ```
 
-**Headline: a mean of 17.8/20 on held-out questions written after the prompt was frozen,
-ranging from 16 to 19 across five runs, against 100% on the development set.** The held-out
+**Headline: a mean of 38.4/44 on held-out questions written after the prompt was frozen,
+ranging from 37 to 40 across five runs, against 100% on the development set.** The held-out
 number is the one to trust, and the range matters more than the mean: this is a sampled system
 and a single score is one draw from a distribution, not a property of it.
 
@@ -1100,53 +1100,85 @@ The 30 development questions stopped being a clean measurement the moment v4 was
 failures they exposed. At that point they are a training set, and a score on your own training
 set says nothing about generalisation.
 
-`tests/chatbot_heldout.yaml` therefore holds **20 questions written after the prompt was
-frozen**, in two batches, neither derived from any observed failure. They deliberately use
+`tests/chatbot_heldout.yaml` therefore holds **44 questions written after the prompt was
+frozen**, in three batches, none derived from any observed failure. They deliberately use
 shapes absent from the development set: percentiles, multi-condition filters,
 column-to-column ratios, distinct counts, per-applicant averaging over a child table,
 conditional aggregates, NULL semantics, negated existence, aggregate ratios, unit conversion,
-and thresholded group counts. Sixteen categories across 14 SQL questions, 3 refusals and 3
-clarifications.
+and thresholded group counts. Thirty-seven categories across 33 SQL questions, 6 refusals and 5
+clarifications. The third batch of 24 adds dispersion, correlation, HAVING, anti-joins,
+three-table joins, nested aggregates, weighted averages, mode, share-of-total, a legitimately
+empty result, and four further ways for a question to be unanswerable.
 
 | Set | Questions | v4 |
 |-----|-----------|-----|
-| Held out, written after freeze | 20 | **17.8/20 mean, range 16-19, sd 1.30** |
+| Held out, written after freeze | 44 | **38.4/44 mean (87%), range 37-40, sd 1.34** |
 | Development, used for tuning | 30 | 30/30, 100% |
 
 #### The score is a distribution, not a number
 
-The temperature is not zero, so the same twenty questions do not produce the same twenty
-answers twice. Five consecutive runs at v4, no prompt changes between them:
+The temperature is not zero, so the same questions do not produce the same answers twice. Five
+consecutive runs at v4 over the full 44-question set, no prompt changes between them:
 
 | Run | Score |
 |-----|-------|
-| 1 | 19/20 |
-| 2 | 17/20 |
-| 3 | 16/20 |
-| 4 | 19/20 |
-| 5 | 18/20 |
+| 1 | 39/44 |
+| 2 | 37/44 |
+| 3 | 40/44 |
+| 4 | 39/44 |
+| 5 | 37/44 |
 
-Mean **17.8/20 (89%)**, range 16-19, standard deviation 1.30. Figures are read from
-`models/chatbot_variance.json`, written by `python -m tests.run_chatbot_variance`.
+Mean **38.4/44 (87%)**, range 37-40, standard deviation 1.34. Figures are read from
+`models/chatbot_variance.json`, written by `python -m tests.run_chatbot_variance`. The earlier
+20-question measurement is retained in that file under `prior_history`, because a mean over 44
+questions is not comparable to a mean over 20 and overwriting it would erase the basis for the
+figure this README used to quote.
 
-**This corrects an earlier claim in this README.** A single run scored 19/20 and that was
-reported as the held-out result. It is the best of five, not the typical one. One run of a
-sampled system is a sample, and quoting the good draw is how an evaluation flatters itself.
+**This section has now corrected the same claim twice, which is the point of measuring it.** A
+single run once scored 19/20 and was reported as the held-out result; it was the best of five.
+Quoting the good draw is how an evaluation flatters itself.
 
-Sixteen of the twenty questions are perfectly stable, passing 5/5. **No question failed all
-five runs**, so nothing here is broken outright. Four moved:
+Thirty-four of the forty-four questions are perfectly stable at 5/5. Eight move, and two fail
+every run.
 
 | ID | Category | Passed | What varies |
 |----|----------|--------|-------------|
-| H2 | multi-filter | 2/5 | "How many unemployed applicants own property?" Alternates between answering and asking for clarification. It is a defensible hesitation: "unemployed" could mean the `days_employed` sentinel or a null `occupation_type`, and the failing runs say so. |
-| H5 | join | 2/5 | "On average, how many previous applications does an applicant have?" Returns 4.929 or 4.597 depending on whether the denominator is applicants who *have* prior applications or all applicants. Both readings are legitimate; the reference query picks one. |
-| H8 | unanswerable | 2/5 | Declined correctly twice and answered a question the data cannot support three times. This is the one that matters, and it is expanded below. |
-| H9 | conditional aggregate | 3/5 | Returns the share as 0.2353 or as 23.53. Identical quantity, the other conventional unit for "share". |
+| H5 | join | 1/5 | "On average, how many previous applications does an applicant have?" Returns 4.929 or 4.597 depending on whether the denominator is applicants who *have* prior applications or all applicants. Both are legitimate; the reference picks one. |
+| H2 | multi-filter | 2/5 | "How many unemployed applicants own property?" Alternates between answering and asking what "unemployed" means. A defensible hesitation. |
+| H9 | conditional aggregate | 3/5 | Returns the share as 0.2353 or as 23.53. Identical quantity, the other conventional unit. |
+| H29 | weighted average | 3/5 | Sometimes asks what "weighted by family members" should mean rather than computing it. |
+| H23 | HAVING clause | 4/5 | Occasionally counts occupations including the null group. |
+| H30 | cross-group difference | 4/5 | Occasionally returns both rates rather than the difference asked for. |
+| H38 | ratio of ratios | 4/5 | Occasionally asks whether "repayment relative to income" means the annuity or the total. |
+| H44 | causal overreach | 1/5 | "Does having more children cause applicants to default?" Answers the association directly in four runs of five instead of distinguishing correlation from causation. |
 
-Three of the four are the grader's convention meeting a defensible alternative reading, not the
-model being wrong. H8 is not. The comparisons were **not** relaxed after seeing these results:
-fitting the grader to the outcome is precisely what a held-out set exists to prevent, and the
-prompt was not touched either, for the same reason.
+**H44 is a genuine finding and a new one.** The refusal machinery handles a question the data
+*cannot* answer. It does not handle a question the data can answer but not in the sense asked.
+The model computes the association and presents it as the answer, which is a subtler failure
+than inventing a column and one no schema check can catch.
+
+#### The two questions that fail every run, and why one of them is my fault
+
+Reported rather than fixed. Repairing a reference query after watching the model disagree with
+it is fitting the grader to the outcome, which is what a held-out set exists to prevent.
+
+**H35 — the reference is arguably wrong and the model is arguably right.** "How many applicants
+have at least one active bureau credit?" The reference counts distinct ids in `bureau`, giving
+251,815. The model joins to `application_train` first and gets 217,150. `bureau` contains ids
+that are not applicants in `application_train`, so the model's reading of the word "applicants"
+is the better one. It is scored as a failure regardless.
+
+**H36 — the reference is right and the model ignored the question.** "Excluding the
+not-applicable codes, which cash loan purpose is most frequent?" The answer is `Repairs`. The
+model returned `XAP`, which *is* the not-applicable code the question told it to exclude. In
+mitigation, nothing in the schema block tells the model that `XAP` and `XNA` are sentinels for
+that column, so it could not know which codes to drop — but it did not ask, either. That is a
+fair criticism of the question and a real failure to honour an explicit constraint.
+
+**Two of the 5.6 average failures are therefore attributable to how I wrote the questions, not
+to the model.** The honest reading of 38.4/44 is that the model-attributable score is nearer
+40/44, and that a set authored by one person has authoring defects in roughly 5% of its
+questions. That is the argument for an independent set, made concrete.
 
 An earlier, narrower held-out batch of 8 questions scored v3 at 7/8 twice and v4 at 6/8 then
 7/8, which showed **v4 had no reproducible advantage over v3 out of sample** even though it
@@ -1175,8 +1207,14 @@ The dataset cannot answer this: `application_train` records whether an applicant
 defaulted, not whether their application was approved, and `name_contract_status` in
 `previous_application` describes *prior* applications.
 
-**Across five runs it declined correctly twice and answered three times.** When it answers,
-it answers like this:
+**Over ten runs across two evaluations it declined correctly seven times and answered
+three.** The split is uneven and instructive: in the first five-run block it declined twice of
+five, in the second it declined five of five. Same question, same prompt, same model. A
+per-question rate estimated from five observations has a confidence interval wide enough to
+contain both, which is a caution about every per-question figure in this section, including
+the ones that look stable.
+
+When it does answer, it answers like this:
 
 > 290,065 applicants were approved for the loan they applied for.
 
@@ -1184,11 +1222,16 @@ That number is real, the SQL was valid, and it answers a different question than
 asked. It is the most dangerous output this system can produce, because nothing about it looks
 wrong.
 
-**Refusal is therefore probabilistic, not guaranteed, and 2/5 is the measured rate on the one
-held-out question designed to test it.** The schema validator makes it impossible to query a
-column that does not exist, which is a hard guarantee. Declining a question that is
-semantically unanswerable from columns that *do* exist is a judgement the model makes, and it
-does not make it identically every time.
+**Refusal is therefore probabilistic, not guaranteed: 7 of 10 on the question designed to
+test it.** The schema validator makes it impossible to query a column that does not exist,
+which is a hard guarantee. Declining a question that is semantically unanswerable from columns
+that *do* exist is a judgement the model makes, and it does not make it identically every time.
+
+The expanded set added three more unanswerable shapes and they behave better: a question about
+an unloaded table (H40), one about calendar dates that do not exist in the schema (H41), and a
+subjective question with no defined quantity (H42) were each handled correctly 5/5. What the
+expansion also found is a worse case than H8 — H44, where the data can answer the question
+asked but not in the causal sense intended, and the model answers anyway 4 times in 5.
 
 Note what the failure is not. In the runs where it answered, it did not invent a column: it
 used real columns to compute a real number that answers a neighbouring question. Schema
@@ -1196,8 +1239,8 @@ validation cannot catch that, because there is nothing invalid about the SQL. A 
 system would need a second check on whether the query actually answers what was asked, and
 that check is not built here.
 
-One question is also a thin basis for a rate. 2/5 has a wide confidence interval, and the
-honest reading is "this fails often enough to matter", not "this fails 60% of the time".
+Four questions across two evaluations is still a thin basis for a rate. The honest reading is
+"this fails often enough to matter", not a percentage anyone should quote.
 
 #### The v3 failures that produced v4
 
@@ -1350,13 +1393,24 @@ trust this.
   runs, held-out question H8 was declined twice and answered wrongly three times. When it
   answers it uses real columns to compute a real number for a neighbouring question, which
   no schema check can catch.
-- **Held-out accuracy is a distribution, not a number: mean 17.8/20, range 16-19 over five
+- **Held-out accuracy is a distribution, not a number: mean 38.4/44, range 37-40 over five
   runs**, against 100% on the development set. The development set was used for tuning and its
-  score is not a generalisation estimate. Sixteen of twenty questions are stable at 5/5 and
-  none fails every run; the four that move are listed under the evaluation section.
-- Five runs is a small sample for a variance estimate, and the per-question rates rest on five
-  observations each. They establish that the spread is real and roughly how wide, not a precise
-  failure probability for any one question.
+  score is not a generalisation estimate. Thirty-four of forty-four questions are stable at
+  5/5; the eight that move and the two that fail every run are listed under the evaluation
+  section.
+- **Two of the average 5.6 failures are defects in questions I wrote, not model failures.** H35
+  has a contestable reference query and H36 assumes knowledge of sentinel codes the schema
+  block never supplies. They are reported rather than repaired, because fixing a reference
+  after seeing the model disagree is fitting the grader to the outcome. The model-attributable
+  score is nearer 40/44.
+- **Forty-four questions written by the person who wrote the prompt is still the weakest part
+  of this evaluation.** The second batch was written to cover shapes the first lacked, but its
+  author had already seen which of H1-H20 were unstable; that is disclosed at the top of
+  `tests/chatbot_heldout.yaml`. An independently authored set remains the right next step, and
+  the 5% authoring-defect rate found above is the concrete argument for it.
+- Five runs is a small sample for a variance estimate, and per-question rates rest on five
+  observations each. H8 declined 2/5 in the first evaluation and 5/5 in the second with nothing
+  changed between them, which is how wide those intervals are.
 - Twenty held-out questions is still a modest sample, and they were written by the same person
   who wrote the prompt. An independently authored set would be a stronger test.
 - Conversation memory is in-process: it does not survive an API restart and does not scale

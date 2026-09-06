@@ -1,58 +1,58 @@
 {
-  "generated_at": "2026-09-06T12:22:10.143269+00:00",
+  "generated_at": "2026-09-06T13:28:21.881233+00:00",
   "prompt_version": "v4",
   "question_set": "tests/chatbot_heldout.yaml",
   "runs": 5,
   "per_run": [
     {
       "run": 1,
-      "passed": 19,
-      "total": 20,
-      "accuracy": 0.95,
-      "total_tokens": 69087,
-      "median_latency_ms": 2532
+      "passed": 39,
+      "total": 44,
+      "accuracy": 0.8863636363636364,
+      "total_tokens": 153088,
+      "median_latency_ms": 2582
     },
     {
       "run": 2,
-      "passed": 17,
-      "total": 20,
-      "accuracy": 0.85,
-      "total_tokens": 69254,
-      "median_latency_ms": 2571
+      "passed": 37,
+      "total": 44,
+      "accuracy": 0.8409090909090909,
+      "total_tokens": 152954,
+      "median_latency_ms": 2565
     },
     {
       "run": 3,
-      "passed": 16,
-      "total": 20,
-      "accuracy": 0.8,
-      "total_tokens": 69205,
-      "median_latency_ms": 2472
+      "passed": 40,
+      "total": 44,
+      "accuracy": 0.9090909090909091,
+      "total_tokens": 152962,
+      "median_latency_ms": 2527
     },
     {
       "run": 4,
-      "passed": 19,
-      "total": 20,
-      "accuracy": 0.95,
-      "total_tokens": 69268,
-      "median_latency_ms": 2665
+      "passed": 39,
+      "total": 44,
+      "accuracy": 0.8863636363636364,
+      "total_tokens": 152602,
+      "median_latency_ms": 2540
     },
     {
       "run": 5,
-      "passed": 18,
-      "total": 20,
-      "accuracy": 0.9,
-      "total_tokens": 69193,
-      "median_latency_ms": 2520
+      "passed": 37,
+      "total": 44,
+      "accuracy": 0.8409090909090909,
+      "total_tokens": 152943,
+      "median_latency_ms": 2536
     }
   ],
   "score": {
-    "min": 16,
-    "max": 19,
+    "min": 37,
+    "max": 40,
     "range": 3,
-    "mean": 17.8,
-    "stdev": 1.3038404810405297,
-    "total": 20,
-    "mean_accuracy": 0.89
+    "mean": 38.4,
+    "stdev": 1.3416407864998738,
+    "total": 44,
+    "mean_accuracy": 0.8727272727272727
   },
   "questions": [
     {
@@ -113,7 +113,7 @@
       "category": "join",
       "question": "On average, how many previous applications does an applicant have?",
       "expected": "sql",
-      "passed_runs": 2,
+      "passed_runs": 1,
       "runs": 5,
       "stable": false,
       "always_failed": false,
@@ -152,13 +152,12 @@
       "category": "unanswerable",
       "question": "How many applicants were approved for the loan they applied for?",
       "expected": "refuse",
-      "passed_runs": 2,
+      "passed_runs": 5,
       "runs": 5,
-      "stable": false,
+      "stable": true,
       "always_failed": false,
       "actions_seen": [
-        "clarify",
-        "sql"
+        "clarify"
       ]
     },
     {
@@ -316,14 +315,362 @@
       "actions_seen": [
         "clarify"
       ]
+    },
+    {
+      "id": "H21",
+      "category": "dispersion",
+      "question": "What is the standard deviation of applicant income?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H22",
+      "category": "correlation",
+      "question": "How correlated are the second and third external credit scores?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H23",
+      "category": "having_clause",
+      "question": "How many occupations have more than 20000 applicants?",
+      "expected": "sql",
+      "passed_runs": 4,
+      "runs": 5,
+      "stable": false,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H24",
+      "category": "anti_join",
+      "question": "How many applicants have no bureau credit history at all?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H25",
+      "category": "three_table_join",
+      "question": "What is the default rate among applicants who have both a bureau record and a previous application?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H26",
+      "category": "nested_aggregate",
+      "question": "Among education levels, what is the highest average income?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H27",
+      "category": "mode",
+      "question": "What is the most common housing situation among applicants?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H28",
+      "category": "share_of_total",
+      "question": "What share of all credit applied for is accounted for by cash loans?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H29",
+      "category": "weighted_average",
+      "question": "What is the average loan size weighted by the number of family members?",
+      "expected": "sql",
+      "passed_runs": 3,
+      "runs": 5,
+      "stable": false,
+      "always_failed": false,
+      "actions_seen": [
+        "clarify",
+        "sql"
+      ]
+    },
+    {
+      "id": "H30",
+      "category": "cross_group_difference",
+      "question": "How much higher is the default rate for applicants who do not own property than for those who do?",
+      "expected": "sql",
+      "passed_runs": 4,
+      "runs": 5,
+      "stable": false,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H31",
+      "category": "percentile_within_group",
+      "question": "What is the median loan amount among applicants with higher education?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H32",
+      "category": "range_filter",
+      "question": "How many applicants have an income between 100000 and 200000?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H33",
+      "category": "empty_result",
+      "question": "How many applicants have a negative income?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H34",
+      "category": "overdue_aggregate",
+      "question": "What is the total outstanding bureau debt across all applicants?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H35",
+      "category": "filtered_count_distinct",
+      "question": "How many applicants have at least one active bureau credit?",
+      "expected": "sql",
+      "passed_runs": 0,
+      "runs": 5,
+      "stable": true,
+      "always_failed": true,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H36",
+      "category": "groupby_ranking",
+      "question": "Excluding the not-applicable codes, which cash loan purpose is most frequent in previous applications?",
+      "expected": "sql",
+      "passed_runs": 0,
+      "runs": 5,
+      "stable": true,
+      "always_failed": true,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H37",
+      "category": "age_conversion",
+      "question": "What is the average age in years of applicants who defaulted?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H38",
+      "category": "ratio_of_ratios",
+      "question": "For applicants who own a car, what is the average repayment relative to income?",
+      "expected": "sql",
+      "passed_runs": 4,
+      "runs": 5,
+      "stable": false,
+      "always_failed": false,
+      "actions_seen": [
+        "clarify",
+        "sql"
+      ]
+    },
+    {
+      "id": "H39",
+      "category": "null_semantics",
+      "question": "How many applicants are missing all three external credit scores?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H40",
+      "category": "unloaded_table",
+      "question": "How many instalment payments were made late?",
+      "expected": "refuse",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "refuse"
+      ]
+    },
+    {
+      "id": "H41",
+      "category": "temporal_impossible",
+      "question": "How many applications were submitted in March 2017?",
+      "expected": "refuse",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "refuse"
+      ]
+    },
+    {
+      "id": "H42",
+      "category": "subjective",
+      "question": "Which applicants are the most trustworthy?",
+      "expected": "clarify",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "clarify"
+      ]
+    },
+    {
+      "id": "H43",
+      "category": "nonexistent_column",
+      "question": "What is the average FICO score of applicants?",
+      "expected": "refuse",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "refuse"
+      ]
+    },
+    {
+      "id": "H44",
+      "category": "causal_overreach",
+      "question": "Does having more children cause applicants to default?",
+      "expected": "clarify",
+      "passed_runs": 1,
+      "runs": 5,
+      "stable": false,
+      "always_failed": false,
+      "actions_seen": [
+        "clarify",
+        "sql"
+      ]
     }
   ],
   "unstable_questions": [
     "H2",
     "H5",
-    "H8",
-    "H9"
+    "H9",
+    "H23",
+    "H29",
+    "H30",
+    "H38",
+    "H44"
   ],
-  "always_failed_questions": [],
-  "note": "Repeated runs of the same held-out set at the same prompt version. The prompt was not changed in response to these results: tuning against a held-out set is what stops it being one."
+  "always_failed_questions": [
+    "H35",
+    "H36"
+  ],
+  "note": "Repeated runs of the same held-out set at the same prompt version. The prompt was not changed in response to these results: tuning against a held-out set is what stops it being one.",
+  "prior_history": [
+    {
+      "generated_at": "2026-09-06T12:22:10.143269+00:00",
+      "prompt_version": "v4",
+      "questions": 20,
+      "runs": 5,
+      "per_run": [
+        19,
+        17,
+        16,
+        19,
+        18
+      ],
+      "mean": 17.8,
+      "min": 16,
+      "max": 19,
+      "stdev": 1.3038404810405297,
+      "unstable_questions": [
+        "H2",
+        "H5",
+        "H8",
+        "H9"
+      ],
+      "always_failed_questions": []
+    }
+  ]
 }

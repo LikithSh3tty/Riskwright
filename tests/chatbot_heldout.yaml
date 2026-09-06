@@ -190,3 +190,221 @@ questions:
     why: >
       Neither "good" nor "bad" is defined. It could mean the target outcome,
       a risk band, or profitability, which the data does not carry.
+
+  # ---------------------------------------------------------------------
+  # Second expansion, H21-H44. Written against the schema to cover shapes
+  # absent from both the development set and H1-H20: dispersion, correlation,
+  # HAVING, anti-joins, three-table joins, nested aggregates, weighted
+  # averages, mode, share-of-total, legitimately empty results, and four more
+  # ways for a question to be unanswerable.
+  #
+  # Disclosure, because it bears on how much these are worth: the author had
+  # already seen which of H1-H20 were unstable before writing these. They were
+  # not written blind in the strict sense. The mitigation was to avoid those
+  # four question shapes entirely rather than to target or dodge the failure
+  # modes -- none of these is a retry of an ambiguous employment filter, a
+  # per-applicant denominator over a child table, an approval-status question,
+  # or a share that could be read as a percentage. What cannot be ruled out is
+  # unconscious steering, and that is a reason to prefer an independently
+  # authored set over this one.
+  # ---------------------------------------------------------------------
+
+  - id: H21
+    category: dispersion
+    question: What is the standard deviation of applicant income?
+    expect: sql
+    reference_sql: SELECT stddev_samp(amt_income_total) FROM application_train
+
+  - id: H22
+    category: correlation
+    question: How correlated are the second and third external credit scores?
+    expect: sql
+    reference_sql: |
+      SELECT corr(ext_source_2, ext_source_3) FROM application_train
+      WHERE ext_source_2 IS NOT NULL AND ext_source_3 IS NOT NULL
+
+  - id: H23
+    category: having_clause
+    question: How many occupations have more than 20000 applicants?
+    expect: sql
+    reference_sql: |
+      SELECT count(*) FROM (
+        SELECT occupation_type FROM application_train
+        WHERE occupation_type IS NOT NULL
+        GROUP BY occupation_type HAVING count(*) > 20000
+      ) t
+
+  - id: H24
+    category: anti_join
+    question: How many applicants have no bureau credit history at all?
+    expect: sql
+    reference_sql: |
+      SELECT count(*) FROM application_train a
+      WHERE NOT EXISTS (SELECT 1 FROM bureau b WHERE b.sk_id_curr = a.sk_id_curr)
+
+  - id: H25
+    category: three_table_join
+    question: What is the default rate among applicants who have both a bureau record and a previous application?
+    expect: sql
+    reference_sql: |
+      SELECT avg(a.target::float) FROM application_train a
+      WHERE EXISTS (SELECT 1 FROM bureau b WHERE b.sk_id_curr = a.sk_id_curr)
+        AND EXISTS (SELECT 1 FROM previous_application p WHERE p.sk_id_curr = a.sk_id_curr)
+
+  - id: H26
+    category: nested_aggregate
+    question: Among education levels, what is the highest average income?
+    expect: sql
+    reference_sql: |
+      SELECT max(avg_income) FROM (
+        SELECT avg(amt_income_total) AS avg_income
+        FROM application_train GROUP BY name_education_type
+      ) t
+
+  - id: H27
+    category: mode
+    question: What is the most common housing situation among applicants?
+    expect: sql
+    compare: text
+    reference_sql: |
+      SELECT name_housing_type FROM application_train
+      WHERE name_housing_type IS NOT NULL
+      GROUP BY name_housing_type ORDER BY count(*) DESC LIMIT 1
+
+  - id: H28
+    category: share_of_total
+    question: What share of all credit applied for is accounted for by cash loans?
+    expect: sql
+    reference_sql: |
+      SELECT sum(amt_credit) FILTER (WHERE name_contract_type = 'Cash loans')
+             / sum(amt_credit)
+      FROM application_train
+
+  - id: H29
+    category: weighted_average
+    question: What is the average loan size weighted by the number of family members?
+    expect: sql
+    reference_sql: |
+      SELECT sum(amt_credit * cnt_fam_members) / sum(cnt_fam_members)
+      FROM application_train
+      WHERE cnt_fam_members IS NOT NULL AND amt_credit IS NOT NULL
+
+  - id: H30
+    category: cross_group_difference
+    question: How much higher is the default rate for applicants who do not own property than for those who do?
+    expect: sql
+    reference_sql: |
+      SELECT
+        avg(target::float) FILTER (WHERE flag_own_realty = 'N')
+        - avg(target::float) FILTER (WHERE flag_own_realty = 'Y')
+      FROM application_train
+
+  - id: H31
+    category: percentile_within_group
+    question: What is the median loan amount among applicants with higher education?
+    expect: sql
+    reference_sql: |
+      SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY amt_credit)
+      FROM application_train WHERE name_education_type = 'Higher education'
+
+  - id: H32
+    category: range_filter
+    question: How many applicants have an income between 100000 and 200000?
+    expect: sql
+    # Two-sided range. The trap is an exclusive bound on one side only.
+    reference_sql: |
+      SELECT count(*) FROM application_train
+      WHERE amt_income_total >= 100000 AND amt_income_total <= 200000
+
+  - id: H33
+    category: empty_result
+    question: How many applicants have a negative income?
+    expect: sql
+    reference_sql: |
+      SELECT count(*) FROM application_train WHERE amt_income_total < 0
+
+  - id: H34
+    category: overdue_aggregate
+    question: What is the total outstanding bureau debt across all applicants?
+    expect: sql
+    reference_sql: SELECT sum(amt_credit_sum_debt) FROM bureau
+
+  - id: H35
+    category: filtered_count_distinct
+    question: How many applicants have at least one active bureau credit?
+    expect: sql
+    reference_sql: |
+      SELECT count(DISTINCT sk_id_curr) FROM bureau WHERE credit_active = 'Active'
+
+  - id: H36
+    category: groupby_ranking
+    question: Excluding the not-applicable codes, which cash loan purpose is most frequent in previous applications?
+    expect: sql
+    compare: text
+    # XAP and XNA are Home Credit's "not applicable" sentinels and dominate the
+    # column. Excluded so the question has a real answer rather than a code.
+    reference_sql: |
+      SELECT name_cash_loan_purpose FROM previous_application
+      WHERE name_cash_loan_purpose NOT IN ('XAP', 'XNA')
+      GROUP BY name_cash_loan_purpose ORDER BY count(*) DESC LIMIT 1
+
+  - id: H37
+    category: age_conversion
+    question: What is the average age in years of applicants who defaulted?
+    expect: sql
+    # days_birth is a negative offset. The trap is reporting a negative age or
+    # forgetting to divide.
+    reference_sql: |
+      SELECT avg(-days_birth / 365.25) FROM application_train WHERE target = 1
+
+  - id: H38
+    category: ratio_of_ratios
+    question: For applicants who own a car, what is the average repayment relative to income?
+    expect: sql
+    reference_sql: |
+      SELECT avg(amt_annuity / amt_income_total) FROM application_train
+      WHERE flag_own_car = 'Y' AND amt_income_total > 0 AND amt_annuity IS NOT NULL
+
+  - id: H39
+    category: null_semantics
+    question: How many applicants are missing all three external credit scores?
+    expect: sql
+    reference_sql: |
+      SELECT count(*) FROM application_train
+      WHERE ext_source_1 IS NULL AND ext_source_2 IS NULL AND ext_source_3 IS NULL
+
+  - id: H40
+    category: unloaded_table
+    question: How many instalment payments were made late?
+    expect: refuse
+    # installments_payments is one of the four Home Credit tables that were not
+    # loaded. The right behaviour is to say so, not to answer from a table that
+    # happens to be present.
+
+  - id: H41
+    category: temporal_impossible
+    question: How many applications were submitted in March 2017?
+    expect: refuse
+    # There are no calendar dates anywhere in the schema, only negative day
+    # offsets from each application's own date.
+
+  - id: H42
+    category: subjective
+    question: Which applicants are the most trustworthy?
+    expect: clarify
+    # "Trustworthy" is not a column and not a defined quantity. Asking what is
+    # meant is the correct response; inventing a definition is not.
+
+  - id: H43
+    category: nonexistent_column
+    question: What is the average FICO score of applicants?
+    expect: refuse
+    # No FICO column. ext_source_* are unnamed external bureau scores on a
+    # different scale.
+
+  - id: H44
+    category: causal_overreach
+    question: Does having more children cause applicants to default?
+    expect: clarify
+    # The data can show an association. It cannot show causation, and the
+    # honest response distinguishes the two rather than answering as asked.
