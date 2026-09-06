@@ -55,6 +55,7 @@ BANDS = load("threshold.json")
 RULES = load("rules.json")
 POLICY = load("rules_without_external_scores.json")
 FAIRNESS = load("fairness_comparison.json")
+AUDIT = load("fairness_audit.json")
 SHAP_GLOBAL = load("shap_global.json")
 
 
@@ -170,18 +171,18 @@ def build() -> Path:
             "postgres, healthchecked",
             "loader, one-shot and idempotent",
             "api, waits on both",
-            "ui, waits on api health",
+            "frontend, waits on api health",
             "",
-            "A React frontend is added by a",
-            "separate override file on its own",
-            "port. The base compose file is",
-            "untouched by it.",
+            "One compose file, one command.",
+            "docker-compose up starts all",
+            "four with no flags and no",
+            "override file.",
             "",
             "**Why it matters**",
             "Startup races are the usual",
             "reason a submission does not",
             "run on someone else's machine.",
-        ], x=0.62, y=0.74, dy=0.052, size=12.5)
+        ], x=0.62, y=0.755, dy=0.0475, size=12.5)
         pdf.savefig(fig); plt.close(fig)
 
         # 3. Calibration and the cost threshold ------------------------------
@@ -301,15 +302,15 @@ def build() -> Path:
 
         # 7. Fair lending ----------------------------------------------------
         fig, _ = slide(pdf, "Fair lending",
-                       "Found by reading the SHAP output. code_gender was driving credit decisions.")
+                       "Five protected attributes excluded. One of them got back in anyway.")
         bullets(fig, [
             "ECOA names sex, marital status and age as protected bases in credit decisions.",
             "A model that prices or refuses credit on them is a legal failure, however well",
-            "it performs. Five attributes are now excluded in the preprocessor, so they cannot",
+            "it performs. Five attributes are excluded in the preprocessor, so they cannot",
             "reach the model, the SHAP explanation, or the derived rules.",
-        ], y=0.76, dy=0.047, size=12.5)
+        ], y=0.775, dy=0.043, size=12.5)
 
-        table(fig, [0.06, 0.40, 0.40, 0.20],
+        table(fig, [0.06, 0.385, 0.38, 0.15],
               ["Excluded", "Protected basis"],
               [["code_gender", "Sex"],
                ["name_family_status", "Marital status"],
@@ -318,29 +319,86 @@ def build() -> Path:
                ["cnt_fam_members", "Familial status"]])
 
         wp = FAIRNESS["with_protected"]; wo = FAIRNESS["without_protected"]
-        table(fig, [0.52, 0.44, 0.42, 0.16],
+        table(fig, [0.52, 0.465, 0.42, 0.09],
               ["Feature set", "ROC-AUC", "PR-AUC"],
               [["With protected", f"{wp['roc_auc']:.4f}", f"{wp['pr_auc']:.4f}"],
                ["Without (shipped)", f"{wo['roc_auc']:.4f}", f"{wo['pr_auc']:.4f}"]],
-              highlight_row=2)
-        fig.text(0.52, 0.40,
+              col_widths=[0.44, 0.28, 0.28], highlight_row=2)
+        fig.text(0.52, 0.45,
                  f"Cost of exclusion: {FAIRNESS['cost_of_exclusion']['roc_auc']:.4f} ROC-AUC.\n"
-                 "Identical split, seed and hyperparameters.\n"
-                 "One holdout split, so not directly comparable\n"
-                 "to the cross-validated figures two slides on.",
+                 "Identical split, seed and hyperparameters. One holdout\n"
+                 "split, so not directly comparable to the CV figures.",
                  fontsize=12.5, color=GOOD, fontweight="bold", va="top", linespacing=1.6)
 
         bullets(fig, [
-            "**Exclusion is the floor, not the bar.** Residual proxies remain and are named:",
-            "name_income_type contains 'Maternity leave' and 'Pensioner'; occupation,",
-            "organization and region columns carry proxy and redlining risk.",
-            "",
-            "Production would additionally need disparate impact testing, proxy detection,",
-            "adverse action reason codes, ongoing monitoring, and reject inference.",
-        ], y=0.30, dy=0.045, size=12)
+            "**Exclusion did not hold. employed_life_ratio = days_employed / days_birth,**",
+            "**derived before days_birth is dropped, so age re-enters via the denominator.**",
+            "Same applicant at 35 vs 55, all else equal: p 0.027133 -> 0.029376, an 8% swing.",
+            "Across 20,000 applicants the score moves for 71.8% of those with a days_employed",
+            "value and 0.0% of those carrying the 'not employed' sentinel, where the ratio is",
+            "NaN. That asymmetry identifies the ratio as the whole channel, not a contributor.",
+            "Documented, not removed: dropping it is a retrain that invalidates every figure here.",
+        ], y=0.315, dy=0.038, size=11.5)
         pdf.savefig(fig); plt.close(fig)
 
-        # 8. Model ------------------------------------------------------------
+        # 8. Fair lending: disparate impact ------------------------------------
+        # Kept immediately after slide 7 so the fair lending argument stays
+        # contiguous. It did not fit on that slide without crowding it.
+        fig, _ = slide(pdf, "Fair lending: disparate impact",
+                       "Every applicant scored with the served model, at the deployed threshold.")
+
+        dec = AUDIT["decision"]
+        bullets(fig, [
+            f"Approved = calibrated probability below t_high = {dec['threshold']:.6f}, the "
+            f"Medium/High boundary.",
+            f"{AUDIT['n_scored']:,} applicants, population approval rate "
+            f"{dec['population_approval_rate']:.4f}. The protected columns are read from",
+            "Postgres to group applicants, never added to a feature path: these are the",
+            "scores the served model produces.",
+        ], y=0.775, dy=0.040, size=12)
+
+        age_rows = [
+            [r["group"], f"{r['count']:,}", f"{r['approval_rate']:.4f}",
+             f"{r['observed_default_rate']:.4f}"]
+            for r in AUDIT["attributes"]["age_band"]["groups"]
+        ]
+        table(fig, [0.06, 0.415, 0.40, 0.13],
+              ["Age band", "n", "Approved", "Observed default"],
+              age_rows, col_widths=[0.24, 0.24, 0.24, 0.28])
+        fig.text(0.06, 0.375, "The worst-failing attribute, in full.",
+                 fontsize=11.5, color=MUTED, va="top")
+
+        ratio_rows, extremes = [], []
+        for name, data in AUDIT["attributes"].items():
+            ff = data["four_fifths"]
+            ratio_rows.append([
+                name,
+                f"{ff['ratio']:.4f}",
+                "PASS" if ff["passes_four_fifths"] else "FAIL",
+            ])
+            extremes.append(f"{ff['lowest_group']} / {ff['highest_group']}")
+        table(fig, [0.54, 0.415, 0.34, 0.13],
+              ["Attribute", "4/5 ratio", "Result"],
+              ratio_rows, col_widths=[0.46, 0.27, 0.27])
+        failing = ", ".join(AUDIT["four_fifths_rule"]["failing_attributes"])
+        fig.text(0.54, 0.375,
+                 "Lowest / highest group: " + ";  ".join(extremes) + ".",
+                 fontsize=10.5, color=MUTED, va="top")
+        fig.text(0.54, 0.340, f"- Below 0.8: {failing}.",
+                 fontsize=11.5, color=BAD, fontweight="bold", va="top")
+
+        bullets(fig, [
+            "**A failing ratio is a screen, not a verdict.** Disparate impact in the legal sense",
+            "requires a business-necessity analysis and a search for a less-discriminatory",
+            "alternative. Neither is performed here, so this flags where that work starts.",
+            "A ratio above 0.8 is likewise not a clearance.",
+            "Observed default rates move with the approval rates, from 4.92% at 60+ to 11.44%",
+            "under 30: the model tracks a real pattern through whatever it can reach. Whether",
+            "that justifies the disparity is exactly the analysis not performed here.",
+        ], y=0.275, dy=0.038, size=11.5)
+        pdf.savefig(fig); plt.close(fig)
+
+        # 9. Model ------------------------------------------------------------
         fig, _ = slide(pdf, "Model", "Two models, identical inputs, 5-fold stratified CV.")
         table(fig, [0.06, 0.58, 0.60, 0.18],
               ["Model", "ROC-AUC", "PR-AUC"],
@@ -362,7 +420,7 @@ def build() -> Path:
         ], y=0.52, dy=0.048, size=12.5)
         pdf.savefig(fig); plt.close(fig)
 
-        # 9. EDA ---------------------------------------------------------------
+        # 10. EDA ---------------------------------------------------------------
         fig, _ = slide(pdf, "What the data says",
                        "Five insights, each computed by the same module the API serves from.")
         bullets(fig, [
@@ -384,7 +442,7 @@ def build() -> Path:
         ], y=0.76, dy=0.0445, size=12)
         pdf.savefig(fig); plt.close(fig)
 
-        # 10. Explainability ---------------------------------------------------
+        # 11. Explainability ---------------------------------------------------
         fig, _ = slide(pdf, "Explaining one decision",
                        "SHAP per prediction, returned as JSON. The UI draws; the API never renders.")
         ax = fig.add_axes([0.06, 0.12, 0.44, 0.62])
@@ -415,7 +473,7 @@ def build() -> Path:
         ], x=0.55, y=0.74, dy=0.0435, size=11.5)
         pdf.savefig(fig); plt.close(fig)
 
-        # 11. Rules -------------------------------------------------------------
+        # 12. Rules -------------------------------------------------------------
         fig, _ = slide(pdf, "From model to credit policy",
                        "A depth-3 surrogate tree, so the logic fits in a policy document.")
         rows = [[r["rule_id"], r["readable"][:62], f"{r['support_pct']:.1f}%",
@@ -439,7 +497,7 @@ def build() -> Path:
         ], y=0.44, dy=0.045, size=12)
         pdf.savefig(fig); plt.close(fig)
 
-        # 12. Engineering -------------------------------------------------------
+        # 13. Engineering -------------------------------------------------------
         fig, _ = slide(pdf, "Engineering", "Verified against a running stack, not asserted.")
         bullets(fig, [
             "**Docker.** Four services. Postgres healthchecked; the loader waits for healthy and",
@@ -461,27 +519,30 @@ def build() -> Path:
         ], y=0.76, dy=0.0445, size=12)
         pdf.savefig(fig); plt.close(fig)
 
-        # 13. Limitations -------------------------------------------------------
+        # 14. Limitations -------------------------------------------------------
         fig, _ = slide(pdf, "What this is not",
                        "The limitations that would matter to someone deciding to trust it.")
         bullets(fig, [
             "**Refusal is probabilistic, not guaranteed.** The validator makes querying a",
             "non-existent column impossible. Declining a question that is semantically",
-            "unanswerable from columns that do exist is a model judgement, and held-out",
-            "question H8 was refused in one run and answered wrongly in another.",
+            "unanswerable from columns that do exist is a model judgement: held-out H8 was",
+            "refused in one run and answered wrongly in another.",
             "",
             "**The model ignores two of the three loaded tables.** bureau and",
             "previous_application serve the chatbot only. Prior credit history is the largest",
-            "single improvement available, worth roughly 0.02-0.03 ROC-AUC in published work.",
+            "improvement available, worth roughly 0.02-0.03 ROC-AUC in published work.",
             "",
-            "**Eight held-out questions is a small sample.** A wider set with a proper train",
-            "and test split is the honest next step.",
+            "**Twenty held-out questions is a modest sample,** written by the person who",
+            "wrote the prompt. An independently authored set is the next step.",
             "",
-            "**Fair lending work is incomplete.** Excluding protected attributes is the floor.",
-            "Disparate impact testing, proxy detection and adverse action codes are not built.",
+            "**Fair lending work is incomplete.** Exclusion did not hold: age reaches the model",
+            "through employed_life_ratio, and two of three attributes fail the four-fifths",
+            "screen. The business-necessity analysis that would interpret those failures,",
+            "systematic proxy detection, and adverse action codes are not built.",
             "",
+            "**No automated coverage of app/ or the UI.** The 46 tests cover src/ only.",
             "**Conversation memory is in-process.** It does not survive a restart.",
-        ], y=0.76, dy=0.0445, size=12)
+        ], y=0.765, dy=0.0395, size=11.5)
         pdf.savefig(fig); plt.close(fig)
 
         # 14+. Screenshots -------------------------------------------------------
