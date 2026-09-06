@@ -13,15 +13,5 @@ nbconvert==7.17.1
 # a rendered figure.
 plotly==7.0.0
 
-# Presentation. The deck is HTML (documents/slides.html); Pillow stitches the
-# rendered slides into the PDF the submission instructions ask for. It used to
-# arrive as a matplotlib dependency, and matplotlib left with the old builder.
-Pillow==11.4.0
-
-# Rendering the deck to PDF additionally needs Playwright and a Chromium
-# download, which pip alone cannot do:
-#
-#     pip install playwright && playwright install chromium
-#
-# Deliberately not pinned here. The PDF is committed, so nobody needs to
-# regenerate it to read the submission; this is only for changing the deck.
+# The presentation is a committed PDF with no build step in the repository,
+# so nothing here is needed to produce it.

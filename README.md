@@ -63,7 +63,7 @@ prescribed tree sits at the top level instead.
 
 ```
 data/                     Home Credit CSVs. Mounted, never committed.
-documents/                The deck: slides.html, its build scripts, and the exported PDF
+documents/                Project presentation (PDF) and its screenshots
 notebooks/                eda.ipynb and its eda.py export
 src/
   data/loader.py          CSV to Postgres, idempotent
@@ -139,8 +139,7 @@ caught a second.
 | `threshold_sensitivity.json` | `src.ml.threshold_sensitivity` | The cost-ratio sweep and how far the bands move across it |
 | `chatbot_variance.json` | `tests.run_chatbot_variance` | Held-out scores across repeated runs, with earlier measurements kept as history |
 
-`documents/slide_data.py` reads all of these, and the deck reads it. The `src.ml.train` rows
-are the only ones a training run produces. Everything from
+The `src.ml.train` rows are the only ones a training run produces. Everything from
 `shap_sample_comparison.json` downwards is computed from artifacts already on disk, or from a
 read-only pass over Postgres with the saved model — so none of the fair-lending, sensitivity
 or SHAP work can disturb the model that is served.
@@ -1365,56 +1364,18 @@ checked for key material as part of the release routine.
 ## Presentation
 
 `documents/project_presentation.pdf` covers the use case with output screenshots, per the
-submission instructions. **The deck is HTML**; the PDF is a render of it.
+submission instructions. Twenty-one slides: architecture, the calibration and cost-threshold
+reasoning, fair lending across three slides, the model comparison, EDA, explainability, rules,
+engineering, limitations, and one screenshot per module.
 
-```bash
-python documents/build_slides.py        # -> documents/slides.html
-python documents/export_slides_pdf.py   # -> documents/project_presentation.pdf
-```
+The screenshots it embeds are kept alongside it in `documents/screenshots/`, since the PDF
+holds them only at export quality.
 
-| File | Role |
-|------|------|
-| `slide_data.py` | Reads all twelve artifacts and shapes them into one dict of figures |
-| `slide_theme.py` | The CSS, the fixed 1920×1080 stage, and the deck controller |
-| `build_slides.py` | The 21 slides, every number interpolated from `slide_data` |
-| `export_slides_pdf.py` | Screenshots each slide in Chromium and stitches the PDF |
-| `slides.html` | The deck. Single file, no build step, opens in any browser. |
-
-Open `documents/slides.html` directly to present it — arrow keys, space, swipe and scroll all
-navigate, and `slides.html#8` deep-links to a slide.
-
-**Every figure in the deck is read from `models/*.json` at build time rather than transcribed.**
-That is not decoration. Building it this way immediately surfaced a number in this README that
-had been typed by hand and was wrong — the naive-threshold precision read 0.545 where the
-artifact said 0.659 — and a later audit caught a second. Generating from the source of truth
-catches transcription drift; typing numbers twice invites it. **That property survived the
-rewrite**, which is why the figures live in `slide_data.py` rather than in the slide markup:
-the presentation layer can be replaced again without putting it at risk.
-
-### Why HTML rather than the previous generated PDF
-
-The deck was previously drawn with matplotlib straight to PDF. It works, and matplotlib is not
-a presentation tool — a slide is a layout problem, and expressing one in axes coordinates means
-hand-tuning every text block against overflow, which is exactly what kept going wrong. Four
-separate rounds of "this slide runs off the bottom" were spent on it.
-
-HTML puts that back on a layout engine. Overflow is now a property that can be *asserted*
-rather than eyeballed: the build is checked by loading the deck in Chromium and comparing every
-slide's `scrollHeight` against the 1080px stage, which is how the three that overflowed on the
-first build were found. Screenshots also stop being embedded bitmaps in a plot and become
-`<img>` tags.
-
-The deck follows the [Frontend Slides](https://github.com/zarazhangrui/frontend-slides) skill's
-Terminal Green preset: JetBrains Mono throughout, GitHub-dark ground, one green accent. Chosen
-for the content rather than the fashion — twenty slides of confusion matrices, four-fifths
-ratios, association rankings and a SQL comparison, where monospace aligns tabular columns for
-free and the register reads as engineering rather than sales.
-
-Two notes on the trade. The PDF is a **static snapshot**: the entrance animations and the
-keyboard navigation exist only in the HTML, which is normal for an exported deck and is why the
-HTML is the source and the PDF the rendering. And regenerating the PDF needs Playwright plus a
-Chromium download, which `pip install -r requirements-dev.txt` cannot do on its own — the PDF
-is committed, so this only matters if you change the deck.
+**The deck is a build artifact without its build.** Its figures were generated from
+`models/*.json` rather than transcribed, and the scripts that did so have been removed at the
+maintainer's request, so the PDF can no longer be regenerated from the artifacts. If a figure
+in `models/` changes, the deck will not follow it. Every other number in this README is still
+checked against the artifacts, and the deck was consistent with them when it was exported.
 
 ## Known limitations
 
