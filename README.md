@@ -1043,7 +1043,7 @@ trust this.
 - Trained on `application_train` only. `bureau` and `previous_application` are loaded for the
   chatbot but contribute no features. Published solutions gain roughly 0.02 to 0.03 ROC-AUC
   from prior credit history; that is the largest single improvement available.
-- No hyperparameter search. Deliberate, but it means the reported 0.7653 is a floor.
+- No hyperparameter search. Deliberate, but it means the reported 0.7614 is a floor.
 - Protected attributes are excluded from the model (see **Fair lending** above), at a measured
   cost of 0.0037 ROC-AUC. Exclusion did not hold: `employed_life_ratio` is derived from
   `days_birth` before `days_birth` is dropped, so age reaches the model through it. Measured
