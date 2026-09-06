@@ -68,14 +68,15 @@ notebooks/                eda.ipynb and its eda.py export
 src/
   data/loader.py          CSV to Postgres, idempotent
   data/preprocessor.py    Cleaning, feature derivation, encoding
-  ml/                     Training, inference, evaluation, SHAP, rules, fairness audit
+  ml/                     Training, inference, evaluation, SHAP, rules,
+                          and the fair-lending and sensitivity measurements
   talk_to_data/           Natural language to SQL, validation, prompts, memory
   utils/                  Logging, configuration, helpers, container-safe paths
 app/                      FastAPI. A thin wrapper over src/, no business logic.
 frontend/                 React client, nginx served. Calls HTTP endpoints only.
 sql/schema.sql            Generated DDL for the three loaded tables
 configs/                  Configuration and the official column glossary
-models/                   Saved model artifacts
+models/                   Saved model artifacts and every measured figure (below)
 tests/                    Unit tests and the chatbot evaluation set
 ```
 
@@ -114,6 +115,40 @@ The assignment tree also lists `sql/roles.sql`. Role creation instead lives in
 `loader.ensure_readonly_role`, because the role's password comes from the environment and
 interpolating a secret into a committed SQL file would be wrong. The role is created with
 parameterised statements at load time.
+
+### What is in `models/`
+
+Every number quoted in this README and in the presentation is read from one of these at build
+time rather than typed in. That is not decoration: generating the deck from the artifacts
+immediately surfaced a hand-typed figure in this README that was wrong, and a later audit
+caught a second.
+
+| Artifact | Written by | Holds |
+|----------|-----------|-------|
+| `lightgbm_model.joblib`, `logistic_model.joblib` | `src.ml.train` | The two fitted models. LightGBM is served. |
+| `feature_spec.json` | `src.ml.train` | Column order, category levels and dtypes, so inference reproduces training exactly |
+| `metrics.json` | `src.ml.train` | ROC-AUC and PR-AUC per fold and out of fold, both models |
+| `threshold.json` | `src.ml.train` | The cost-optimal threshold, the band boundaries, and the confusion matrix at each |
+| `oof_predictions.npz` | `src.ml.train` | Out-of-fold scores, which is why the threshold sweep needs no retrain |
+| `rules.json`, `rules_without_external_scores.json` | `src.ml.train --artifacts` | The two derived rule sets with support, default rate and lift |
+| `shap_global.json` | `src.ml.train --artifacts`, then `src.ml.shap_full` | Mean absolute SHAP per feature. Now exhaustive over all 307,511 applicants. |
+| `shap_sample_comparison.json` | `src.ml.shap_full` | The exhaustive ranking against the 2,000-row sample it replaced |
+| `fairness_comparison.json` | `src.ml.train --fairness` | What excluding the protected attributes costs |
+| `fairness_audit.json` | `src.ml.fairness_audit` | Approval and default rates per protected group, and the four-fifths ratios |
+| `proxy_detection.json` | `src.ml.proxy_detection` | Every feature scored against every excluded attribute |
+| `threshold_sensitivity.json` | `src.ml.threshold_sensitivity` | The cost-ratio sweep and how far the bands move across it |
+| `chatbot_variance.json` | `tests.run_chatbot_variance` | Held-out scores across repeated runs, with earlier measurements kept as history |
+
+The `src.ml.train` rows are the only ones a training run produces. Everything from
+`shap_sample_comparison.json` downwards is computed from artifacts already on disk, or from a
+read-only pass over Postgres with the saved model — so none of the fair-lending, sensitivity
+or SHAP work can disturb the model that is served.
+
+Model artifacts are committed, which contradicts a common convention but follows the
+assignment's list of deliverables and means a fresh clone can serve predictions without
+training first. The measurement artifacts are committed for a different reason: they are the
+evidence behind the claims, and a claim whose evidence is not in the repository is an
+assertion.
 
 ---
 
@@ -808,21 +843,26 @@ Excluding the attributes is the floor, not the bar:
   attribute from the whole feature matrix and report its accuracy. Features individually below
   the threshold can reconstruct an attribute together, and `employed_life_ratio` at 0.074 is
   the proof that they do.
-- **A rule-based adverse action engine.** The reason codes above are built and serve a fixed,
-  reviewed vocabulary rather than free-generated text, which closes the mechanical half. What
-  remains is deriving the reasons from the credit policy rather than from SHAP attributions,
-  and agreeing the enumerated set with counsel.
+- **A rule-based adverse action engine.** The reason codes under **Explainability** below are
+  built and serve a fixed, reviewed vocabulary rather than free-generated text, which closes
+  the mechanical half. What remains is deriving the reasons from the credit policy rather than
+  from SHAP attributions, and agreeing the enumerated set with counsel.
 - **Ongoing monitoring.** Fairness is not established once at training time. Population drift
   can reintroduce disparate impact from an unchanged model.
 - **Reject inference.** The training data contains only accepted applicants, so the model
   learns from a censored population. This biases the model in ways that interact with fairness
   testing.
 
-Of that list, only the disparate impact screen is implemented, and it is the half of a
-disparate impact review that does not require judgement. This is a technical demonstration,
-and the honest position is that removing the protected attributes, measuring what the
-remaining decisions look like, and naming a proxy that survived the removal makes it
-defensible to discuss. It does not make it deployable.
+Three of that list are implemented: the disparate impact screen, the single-feature proxy
+scan, and the reason codes. What they have in common is that each is the half of its problem
+that does not require judgement — counting approval rates, measuring associations, mapping
+attributions to reviewed text. The halves that remain are the ones needing a business
+decision, a credit policy, and counsel.
+
+This is a technical demonstration. The honest position is that excluding the protected
+attributes, measuring what the remaining decisions look like, finding the fifteen features
+that carry those attributes anyway, and saying which of them the model leans on hardest makes
+it defensible to discuss. It does not make it deployable.
 
 ## Explainability
 
