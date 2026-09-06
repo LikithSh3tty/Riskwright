@@ -438,38 +438,6 @@ python -m src.ml.train --quick      # single split, LightGBM only, about 60 seco
 python -m src.ml.train --artifacts  # rebuild SHAP and rules from the saved model
 ```
 
-### Two frontends, and why
-
-Streamlit came first and is what the submission was built and verified around. The evaluation
-criteria contain no line for frontend quality, so the time that a React build would have taken
-went into the chatbot evaluation harness, the held-out question set, and the fair lending work
-instead, all of which sit against criteria that are scored.
-
-A React frontend was then added afterwards as a strict upgrade, once the Streamlit build was
-complete and tagged. It consumes exactly the same endpoints, adds no API surface, and lives
-behind a separate compose file so the original stack is untouched:
-
-```bash
-docker-compose up                    # Postgres, API, Streamlit on 8501
-
-docker-compose -f docker-compose.yml -f docker-compose.react.yml up
-                                     # the same, plus React on 5173
-```
-
-Both UIs can run at once because they bind different ports. `docker-compose.yml` is byte
-identical to the version tagged `v1.2-submission`; the React service is added purely by the
-override file.
-
-The React client is Vite plus React, built in a multi-stage Dockerfile and served by nginx,
-which also proxies `/api/*` to the API service. The browser therefore never learns the API's
-host, and no `VITE_*` variable is used: Vite inlines those into the client bundle at build
-time, so the Anthropic key stays in the `api` service where it is set. The built bundle is
-checked for key material as part of the release routine.
-
-That this was cheap to add is the point of the layering. The UI holds no business logic, reads
-every value over HTTP, and keeps conversation state server side behind a session id, so a
-second frontend was a new compose service rather than a rewrite.
-
 ## Fair lending
 
 **The model does not use protected attributes.** They are excluded from the feature matrix in
@@ -830,9 +798,12 @@ hypothesis, and it is reported because it changes what a policy built on this da
 
 ## User interface
 
-Streamlit, five sections, each a pure client of the API. No business logic, no database access
-and no model loading in the UI layer: every value on screen arrived over HTTP. That is what
-would make replacing this frontend a swap of one compose service rather than a rewrite.
+Five sections, each a pure client of the API. No business logic, no database access and no
+model loading in the UI layer: every value on screen arrived over HTTP.
+
+There are two implementations of these same five sections, Streamlit and React, described
+below. Both consume the same endpoints. The screenshots in the presentation are from the React
+client.
 
 | Section | Contents |
 |---------|----------|
@@ -842,8 +813,42 @@ would make replacing this frontend a swap of one compose service rather than a r
 | Derived rules | Both rule sets with support, default rate, and lift |
 | Ask the data | Chat with generated SQL shown in an expander, results as a table, refusals rendered distinctly |
 
-Charts are Plotly, never `st.pyplot`, because a server-rendered figure would put presentation
-logic behind the API. Aggregation happens server-side; raw rows never reach the browser.
+The Streamlit client draws with Plotly and the React client with Recharts. Neither renders a
+figure on the server: a server-rendered image would put presentation logic behind the API and
+make the frontend hard to replace. Aggregation happens server-side; raw rows never reach the
+browser.
+
+### Two frontends, and why
+
+Streamlit came first and is what the submission was built and verified around. The evaluation
+criteria contain no line for frontend quality, so the time that a React build would have taken
+went into the chatbot evaluation harness, the held-out question set, and the fair lending work
+instead, all of which sit against criteria that are scored.
+
+A React frontend was then added afterwards as a strict upgrade, once the Streamlit build was
+complete and tagged. It consumes exactly the same endpoints, adds no API surface, and lives
+behind a separate compose file so the original stack is untouched:
+
+```bash
+docker-compose up                    # Postgres, API, Streamlit on 8501
+
+docker-compose -f docker-compose.yml -f docker-compose.react.yml up
+                                     # the same, plus React on 5173
+```
+
+Both UIs can run at once because they bind different ports. `docker-compose.yml` is byte
+identical to the version tagged `v1.2-submission`; the React service is added purely by the
+override file.
+
+The React client is Vite plus React, built in a multi-stage Dockerfile and served by nginx,
+which also proxies `/api/*` to the API service. The browser therefore never learns the API's
+host, and no `VITE_*` variable is used: Vite inlines those into the client bundle at build
+time, so the Anthropic key stays in the `api` service where it is set. The built bundle is
+checked for key material as part of the release routine.
+
+That this was cheap to add is the point of the layering. The UI holds no business logic, reads
+every value over HTTP, and keeps conversation state server side behind a session id, so a
+second frontend was a new compose service rather than a rewrite.
 
 ## Presentation
 
