@@ -118,10 +118,12 @@ parameterised statements at load time.
 
 ### What is in `models/`
 
-Every number quoted in this README and in the presentation is read from one of these at build
-time rather than typed in. That is not decoration: generating the deck from the artifacts
-immediately surfaced a hand-typed figure in this README that was wrong, and a later audit
-caught a second.
+Every number quoted in this README is read from one of these rather than typed in, and is
+re-checked against them whenever a figure changes. That is not decoration: reading the artifacts
+rather than transcribing them surfaced a hand-typed figure in this README that was wrong, and a
+later audit caught a second.
+
+The presentation was generated the same way and no longer is; see **Presentation** below.
 
 | Artifact | Written by | Holds |
 |----------|-----------|-------|
@@ -287,6 +289,8 @@ python -m src.ml.train --quick     # single split, about 60 seconds
 python -m src.ml.train --fairness  # cost of excluding protected attributes
 python -m src.ml.fairness_audit    # disparate impact screen, no retrain
 python -m src.ml.proxy_detection   # single-feature proxy scan
+python -m src.ml.shap_full         # exhaustive global SHAP, chunked
+python -m src.ml.threshold_sensitivity   # cost ratio sweep; needs no database
 pytest                             # 176 tests, no database needed
 
 uvicorn app.main:app --reload
@@ -726,18 +730,24 @@ none because they do not cross a split boundary.
 accepted a different set of fields from the other, and a value that should have been inert
 moved the score. A single frontend would not have surfaced it.
 
-**It is unlikely to be the only such path.** `days_employed`, `own_car_age`,
-`days_id_publish` and `days_registration` are all day-offset or duration columns that
-plausibly carry age signal, and `credit_term` and the other ratios were not checked for
-analogous constructions. No systematic proxy-detection pass was performed. The honest claim
-is that one leak was found, not that one leak exists.
+**It was not the only such path, and it is not the largest.** This paragraph used to say
+that a systematic pass had not been run and that other day-offset columns *plausibly* carried
+age signal. Both have since been settled by measurement, above: fifteen features are a material
+proxy for an excluded attribute, twelve of them for age, and five of those are stronger channels
+than this one. `days_employed`, `days_id_publish` and `days_registration` were on that guessed
+list and do carry age at 0.307, 0.264 and 0.295. `own_car_age` was on it too and measures 0.021,
+which is nothing.
+
+The reason this leak still earns its own subsection is that the systematic pass would have
+missed it. `employed_life_ratio` predicts age at 0.074, far below the material floor, while the
+counterfactual above shows it transmitting age cleanly. Association and conduction are different
+questions, and this is the worked example of the gap between them.
 
 **Why it is documented rather than removed.** Dropping `employed_life_ratio` changes the
-feature set from 120 columns to 119 and requires a retrain. Every figure in this README and in
-the presentation — ROC-AUC, PR-AUC, the calibration constant, the cost-optimal threshold, the
-band boundaries, the SHAP importances, the derived rules, the fair-lending delta, and the
-disparate impact measurement below — is computed against the 120-feature artifact that is
-actually served. Removing the feature would invalidate all of them and leave a README
+feature set from 120 columns to 119 and requires a retrain. Every figure in this README — ROC-AUC, PR-AUC, the
+calibration constant, the cost-optimal threshold, the band boundaries, the SHAP importances,
+the derived rules, the fair-lending delta, and the disparate impact measurement below — is
+computed against the 120-feature artifact that is actually served. Removing the feature would invalidate all of them and leave a README
 describing a model that is not in the container. Measuring and reporting the leak against the
 shipped artifact is the more useful result.
 
@@ -762,7 +772,7 @@ Every applicant in `application_train` is scored with the served LightGBM artifa
 deployed threshold is applied. **Approved** means a calibrated default probability below
 `t_high` = 0.083669, the Medium/High band boundary: at or above it an applicant is declined or
 escalated. Population approval rate is 70.39%. Results are written to
-`models/fairness_audit.json`, which the README and the presentation both read.
+`models/fairness_audit.json`, which this README reads.
 
 **`code_gender`**
 
@@ -1372,10 +1382,10 @@ The screenshots it embeds are kept alongside it in `documents/screenshots/`, sin
 holds them only at export quality.
 
 **The deck is a build artifact without its build.** Its figures were generated from
-`models/*.json` rather than transcribed, and the scripts that did so have been removed at the
-maintainer's request, so the PDF can no longer be regenerated from the artifacts. If a figure
-in `models/` changes, the deck will not follow it. Every other number in this README is still
-checked against the artifacts, and the deck was consistent with them when it was exported.
+`models/*.json` rather than transcribed, but the scripts that did so are no longer in the
+repository, so the PDF cannot be regenerated from the artifacts. If a figure in `models/`
+changes, the deck will not follow it. Every other number in this README is still checked
+against the artifacts, and the deck agreed with them when it was exported.
 
 ## Known limitations
 
