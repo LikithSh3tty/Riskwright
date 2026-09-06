@@ -57,6 +57,8 @@ POLICY = load("rules_without_external_scores.json")
 FAIRNESS = load("fairness_comparison.json")
 AUDIT = load("fairness_audit.json")
 VARIANCE = load("chatbot_variance.json")
+PROXIES = load("proxy_detection.json")
+SENSITIVITY = load("threshold_sensitivity.json")
 SHAP_GLOBAL = load("shap_global.json")
 
 
@@ -220,25 +222,60 @@ def build() -> Path:
         pdf.savefig(fig); plt.close(fig)
 
         # 4. Risk bands ------------------------------------------------------
+        # Two columns: the boundaries on the left, and on the right how far
+        # they move when the assumption behind them changes.
         fig, _ = slide(pdf, "Risk bands",
                        "The two boundaries answer different questions and are set differently.")
-        table(fig, [0.06, 0.55, 0.88, 0.22],
+        table(fig, [0.06, 0.60, 0.44, 0.14],
               ["Boundary", "Value", "How it is set"],
-              [["t_high  Medium / High", f"{BANDS['t_high']:.4f}",
-                "Cost-optimal. Derived from the 10:1 assumption."],
-               ["t_low  Low / Medium", f"{BANDS['t_low']:.4f}",
-                "A business judgment. Not an optimum."]],
-              col_widths=[0.24, 0.12, 0.52])
+              [["t_high  Medium/High", f"{BANDS['t_high']:.4f}", "Cost-optimal"],
+               ["t_low  Low/Medium", f"{BANDS['t_low']:.4f}", "Business judgment"]],
+              col_widths=[0.42, 0.22, 0.36])
+
         bullets(fig, [
-            "Above t_high the expected cost of approving exceeds the expected cost of",
-            "refusing. That follows from the cost assumption.",
+            "Above t_high the expected cost of approving",
+            "exceeds the expected cost of refusing. That",
+            "follows from the cost assumption.",
             "",
-            "Where automatic approval should stop is a matter of review capacity and risk",
-            "appetite. Nothing in the data answers it, so t_low is exposed as a policy dial",
-            "in models/threshold.json rather than presented as a computed result.",
+            "Where automatic approval should stop is a",
+            "matter of review capacity and risk appetite.",
+            "Nothing in the data answers it, so t_low is",
+            "exposed as a policy dial in threshold.json",
+            "rather than presented as a computed result.",
             "",
-            "**Stating which number is derived and which is chosen is the point.**",
-        ], y=0.44, dy=0.05, size=13)
+            "**Stating which number is derived and which**",
+            "**is chosen is the point.**",
+        ], y=0.50, dy=0.042, size=12.5)
+
+        sens_rows = [
+            [f"{row['ratio']:.0f}:1", f"{row['t_high']:.4f}",
+             f"{row['approval_rate']:.1%}", f"{row['defaulters_caught']:,}"]
+            for row in SENSITIVITY["ratios"]
+        ]
+        # get_celld numbers the header row 0, so the first data row is 1.
+        shipped_index = next(
+            i for i, row in enumerate(SENSITIVITY["ratios"], start=1)
+            if row["is_shipped"]
+        )
+        fig.text(0.54, 0.755, "How much rests on the 10:1 assumption?",
+                 fontsize=14, color=ACCENT, fontweight="bold", va="top")
+        table(fig, [0.54, 0.28, 0.40, 0.40],
+              ["Cost ratio", "t_high", "Approve", "Caught"],
+              sens_rows, col_widths=[0.26, 0.26, 0.24, 0.24],
+              highlight_row=shipped_index)
+
+        spread = SENSITIVITY["threshold_range"]
+        stability = SENSITIVITY["band_stability"]
+        fig.text(0.54, 0.235,
+                 f"t_high moves {spread['min']:.4f} to {spread['max']:.4f}: a spread of "
+                 f"{spread['relative_spread']:.0%}\n"
+                 f"of the shipped value. Only {stability['unchanged_share']:.1%} of applicants "
+                 "keep\nthe same band across the range.",
+                 fontsize=12, color=BAD, fontweight="bold", va="top", linespacing=1.5)
+        fig.text(0.54, 0.10,
+                 "Every ratio still beats 0.5. The method survives;\n"
+                 "the number needs a real recovery model.",
+                 fontsize=12, color=MUTED, va="top", linespacing=1.5)
         pdf.savefig(fig); plt.close(fig)
 
         # 5. Talk-to-data: measured, not demoed ------------------------------
@@ -336,15 +373,23 @@ def build() -> Path:
                  "split, so not directly comparable to the CV figures.",
                  fontsize=12.5, color=GOOD, fontweight="bold", va="top", linespacing=1.6)
 
+        age = PROXIES["attributes"]["age_years"]
+        ext1 = next(r["association"] for r in age["material"]
+                    if r["feature"] == "ext_source_1")
         bullets(fig, [
-            "**Exclusion did not hold. employed_life_ratio = days_employed / days_birth,**",
-            "**derived before days_birth is dropped, so age re-enters via the denominator.**",
-            "Same applicant at 35 vs 55, all else equal: p 0.027133 -> 0.029376, an 8% swing.",
-            "Across 20,000 applicants the score moves for 71.8% of those with a days_employed",
-            "value and 0.0% of those carrying the 'not employed' sentinel, where the ratio is",
-            "NaN. That asymmetry identifies the ratio as the whole channel, not a contributor.",
-            "Documented, not removed: dropping it is a retrain that invalidates every figure here.",
-        ], y=0.315, dy=0.038, size=11.5)
+            "**Exclusion did not hold, and a systematic pass says how badly.** All 120",
+            "**features scored against each excluded attribute, over all 307,511 applicants.**",
+            f"{PROXIES['distinct_material_count']} distinct features are a material proxy for "
+            f"at least one. Age is the worst: {age['material_count']} material,",
+            f"{age['strong_count']} strong, led by organization_type at "
+            f"{age['material'][0]['association']:.3f} and ext_source_1 at {ext1:.3f}.",
+            "",
+            "**Neither method alone was enough.** The scan would have missed",
+            "employed_life_ratio, which predicts age at only 0.074 yet demonstrably carries",
+            "it: vary days_birth alone and the score moves for 71.8% of applicants with a",
+            "days_employed value and 0.0% of those without. Hand-inspection found that one",
+            "and none of the twelve. Running both produced the full picture.",
+        ], y=0.325, dy=0.0335, size=11)
         pdf.savefig(fig); plt.close(fig)
 
         # 8. Fair lending: disparate impact ------------------------------------
@@ -404,7 +449,44 @@ def build() -> Path:
         ], y=0.275, dy=0.038, size=11.5)
         pdf.savefig(fig); plt.close(fig)
 
-        # 9. Model ------------------------------------------------------------
+        # 9. Adverse action reason codes ---------------------------------------
+        # Third slide of the fair lending run, kept contiguous with the two
+        # before it.
+        fig, _ = slide(pdf, "Adverse action reason codes",
+                       "ECOA requires the specific principal reasons for a denial, not a score.")
+        bullets(fig, [
+            "SHAP contributions are the right raw material and are not reason codes.",
+            "ext_source_3 = 0.19, shap_value = +0.847 is a model diagnostic, not a disclosure.",
+        ], y=0.77, dy=0.042, size=12.5)
+
+        table(fig, [0.06, 0.42, 0.88, 0.20],
+              ["#", "Reason given to applicant 100002", "Driven by", "SHAP"],
+              [["1", "Credit assessment obtained from an external credit bureau",
+                "ext_source_1/2/3", "0.847"],
+               ["2", "Length of the repayment term relative to the amount requested",
+                "credit_term", "0.221"],
+               ["3", "Value of the goods financed relative to the credit requested",
+                "amt_goods_price", "0.159"],
+               ["4", "Length of time in your current employment",
+                "days_employed", "0.088"]],
+              col_widths=[0.05, 0.55, 0.24, 0.16])
+
+        bullets(fig, [
+            "**Phrases are a fixed, versioned table in source.** None is generated at request",
+            "time: the same input must produce the same words, and a notice that cannot be",
+            "reviewed before it is sent cannot be signed off. Four maximum, per Regulation B.",
+            "Duplicate reasons collapse -- three bureau scores are one reason to an applicant.",
+            "An applicant below the threshold gets no notice and no reasons are computed.",
+            "",
+            "**Some features are never disclosed.** Appointment timing, the geographic columns,",
+            "and the social-circle columns describing other people's conduct are withheld and",
+            "named in the response rather than dropped silently.",
+            "- Still SHAP attributions shaped as reasons, not a rule-based engine working",
+            "- from the credit policy. That distinction is the remaining gap, and it is stated.",
+        ], y=0.375, dy=0.0345, size=11)
+        pdf.savefig(fig); plt.close(fig)
+
+        # 10. Model ------------------------------------------------------------
         fig, _ = slide(pdf, "Model", "Two models, identical inputs, 5-fold stratified CV.")
         table(fig, [0.06, 0.58, 0.60, 0.18],
               ["Model", "ROC-AUC", "PR-AUC"],
@@ -426,7 +508,7 @@ def build() -> Path:
         ], y=0.52, dy=0.048, size=12.5)
         pdf.savefig(fig); plt.close(fig)
 
-        # 10. EDA ---------------------------------------------------------------
+        # 11. EDA ---------------------------------------------------------------
         fig, _ = slide(pdf, "What the data says",
                        "Five insights, each computed by the same module the API serves from.")
         bullets(fig, [
@@ -448,7 +530,7 @@ def build() -> Path:
         ], y=0.76, dy=0.0445, size=12)
         pdf.savefig(fig); plt.close(fig)
 
-        # 11. Explainability ---------------------------------------------------
+        # 12. Explainability ---------------------------------------------------
         fig, _ = slide(pdf, "Explaining one decision",
                        "SHAP per prediction, returned as JSON. The UI draws; the API never renders.")
         ax = fig.add_axes([0.06, 0.12, 0.44, 0.62])
@@ -479,7 +561,7 @@ def build() -> Path:
         ], x=0.55, y=0.74, dy=0.0435, size=11.5)
         pdf.savefig(fig); plt.close(fig)
 
-        # 12. Rules -------------------------------------------------------------
+        # 13. Rules -------------------------------------------------------------
         fig, _ = slide(pdf, "From model to credit policy",
                        "A depth-3 surrogate tree, so the logic fits in a policy document.")
         rows = [[r["rule_id"], r["readable"][:62], f"{r['support_pct']:.1f}%",
@@ -503,7 +585,7 @@ def build() -> Path:
         ], y=0.44, dy=0.045, size=12)
         pdf.savefig(fig); plt.close(fig)
 
-        # 13. Engineering -------------------------------------------------------
+        # 14. Engineering -------------------------------------------------------
         fig, _ = slide(pdf, "Engineering", "Verified against a running stack, not asserted.")
         bullets(fig, [
             "**Docker.** Four services. Postgres healthchecked; the loader waits for healthy and",
@@ -516,10 +598,10 @@ def build() -> Path:
             "",
             "**Idempotent load.** 740MB in about 150 seconds; a second start skips it in one.",
             "",
-            "**121 tests, no database needed.** The validation gate, the train/serve skew",
-            "guard, the calibration identity, path resolution, four-fifths arithmetic, and",
-            "the API contracts -- one of which asserts no protected attribute reaches a",
-            "SHAP contribution, on the real serving path.",
+            "**176 tests, no database needed.** The validation gate, the train/serve skew",
+            "guard, the calibration identity, path resolution, four-fifths arithmetic, proxy",
+            "statistics, adverse action disclosure, and the API contracts -- one of which",
+            "asserts no protected attribute reaches a SHAP contribution on the real path.",
             "",
             "**Token cost.** Schema block is 1,656 tokens, not the ~6,000 a full dump would be.",
             "Caching is wired but measured not to engage: Haiku 4.5 needs a 4,096 token prefix.",
@@ -527,7 +609,7 @@ def build() -> Path:
         ], y=0.765, dy=0.0415, size=12)
         pdf.savefig(fig); plt.close(fig)
 
-        # 14. Limitations -------------------------------------------------------
+        # 15. Limitations -------------------------------------------------------
         fig, _ = slide(pdf, "What this is not",
                        "The limitations that would matter to someone deciding to trust it.")
         bullets(fig, [
@@ -536,20 +618,20 @@ def build() -> Path:
             "is a model judgement: across five runs held-out H8 was declined twice and",
             "answered wrongly three times, using real columns for a neighbouring question.",
             "",
-            "**The held-out score is a distribution,** not a number: mean 17.8/20, range",
-            "16-19 over five runs. Twenty questions, written by the person who wrote the",
-            "prompt. An independently authored set, and more runs, are both the next step.",
+            "**The held-out score is a distribution,** not a number: mean 38.4/44, range",
+            "37-40 over five runs. Two of the failures are defects in questions the author",
+            "wrote, not model failures. An independently authored set is the next step.",
             "",
             "**The model ignores two of the three loaded tables.** bureau and",
             "previous_application serve the chatbot only; prior credit history is the",
             "largest improvement available, worth roughly 0.02-0.03 ROC-AUC.",
             "",
-            "**Fair lending work is incomplete.** Exclusion did not hold: age reaches the",
-            "model through employed_life_ratio, and two of three attributes fail the",
-            "four-fifths screen. Business-necessity analysis, systematic proxy detection",
-            "and adverse action codes are not built.",
+            "**Fair lending work is incomplete.** Two of three attributes fail the four-fifths",
+            "screen and fifteen features are material proxies for an excluded attribute.",
+            "The screen, the proxy scan and the reason codes are built; the",
+            "business-necessity analysis that would interpret them is not.",
             "",
-            "**The React UI has no automated coverage.** The 121 tests cover src/ and the",
+            "**The React UI has no automated coverage.** The 176 tests cover src/ and the",
             "app/ contracts. **Conversation memory is in-process:** it dies on restart.",
         ], y=0.765, dy=0.0375, size=11.5)
         pdf.savefig(fig); plt.close(fig)

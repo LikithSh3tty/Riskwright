@@ -252,7 +252,7 @@ python -m src.ml.train --quick     # single split, about 60 seconds
 python -m src.ml.train --fairness  # cost of excluding protected attributes
 python -m src.ml.fairness_audit    # disparate impact screen, no retrain
 python -m src.ml.proxy_detection   # single-feature proxy scan
-pytest                             # 121 tests, no database needed
+pytest                             # 176 tests, no database needed
 
 uvicorn app.main:app --reload
 ```
@@ -1130,9 +1130,9 @@ consecutive runs at v4 over the full 44-question set, no prompt changes between 
 
 Mean **38.4/44 (87%)**, range 37-40, standard deviation 1.34. Figures are read from
 `models/chatbot_variance.json`, written by `python -m tests.run_chatbot_variance`. The earlier
-20-question measurement is retained in that file under `prior_history`, because a mean over 44
-questions is not comparable to a mean over 20 and overwriting it would erase the basis for the
-figure this README used to quote.
+20-question measurement — mean 17.8/20, range 16-19 — is retained in that file under
+`prior_history`, because a mean over 44 questions is not comparable to a mean over 20 and
+overwriting it would erase the basis for the figure this README used to quote.
 
 **This section has now corrected the same claim twice, which is the point of measuring it.** A
 single run once scored 19/20 and was reported as the held-out result; it was the best of five.
@@ -1348,17 +1348,21 @@ trust this.
   from prior credit history; that is the largest single improvement available.
 - No hyperparameter search. Deliberate, but it means the reported 0.7614 is a floor.
 - Protected attributes are excluded from the model (see **Fair lending** above), at a measured
-  cost of 0.0037 ROC-AUC. Exclusion did not hold: `employed_life_ratio` is derived from
-  `days_birth` before `days_birth` is dropped, so age reaches the model through it. Measured
-  and documented rather than removed, because removing it would require a retrain and
-  invalidate every figure reported here.
+  cost of 0.0037 ROC-AUC. **Exclusion did not hold, and the systematic pass says how badly:
+  fifteen features are a material proxy for at least one excluded attribute**, twelve of them
+  for age and five of those strongly. `ext_source_1` reconstructs age at 0.600 and is the third
+  most important feature in the model. Documented rather than removed, because removing any of
+  them requires a retrain and invalidates every figure reported here.
 - **Two of three protected attributes fail the four-fifths screen** at the deployed threshold:
   age band at 0.5602 and `name_family_status` at 0.7885. `code_gender` passes at 0.8528. That
   is a screening flag, not a finding of disparate impact — the business-necessity analysis the
   legal test requires is not performed.
-- Still not done: business-necessity analysis, systematic proxy detection, adverse action
-  reason codes, and reject inference. Several residual proxies remain and are listed in that
-  section. Not deployable without that work.
+- Still not done, now specifically rather than generally: the **business-necessity analysis**
+  that would say whether either failing ratio is justified; **multivariate** proxy detection,
+  since the pass above measures one feature at a time and `employed_life_ratio` at 0.074 proves
+  features below the floor can still carry an attribute; a **rule-based adverse action engine**
+  working from the credit policy rather than from SHAP attributions; and **reject inference**.
+  Not deployable without that work.
 - **The 10:1 cost ratio is still an assumption, but a bounded one.** Sweeping 3:1 to 20:1 moves
   `t_high` from 0.0407 to 0.2284 — 2.2 times the shipped threshold — and the approval rate from
   46% to 95%. Only 51.5% of applicants keep the same risk band across that range, so the
@@ -1441,7 +1445,7 @@ trust this.
   assignment, which lists saved model artifacts as a repository deliverable, and it means a
   fresh clone can serve predictions without training first.
 - No authentication on the API. Appropriate for an assignment, not for anything else.
-- The 121 tests cover `src/` and the `app/` request/response contracts. **The React UI has
+- The 176 tests cover `src/` and the `app/` request/response contracts. **The React UI has
   no automated coverage** and is verified by hand against a running stack. Nor is anything
   that needs a live database or a live LLM covered: the API tests mock the data layer, so
   what is asserted is the contract, not the SQL underneath it. The chatbot is measured by
@@ -1461,16 +1465,25 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-121 tests, no database required.
+176 tests, no database required.
 
 | File | Tests | What it covers |
 |------|-------|----------------|
 | `test_api.py` | 39 | Endpoint contracts. `/predict` and `/explain` run the committed model and the real SHAP explainer against a synthetic applicant; only the Postgres reads are mocked. |
 | `test_query_runner.py` | 23 | The SQL validation gate: single-SELECT enforcement, table and column whitelisting, forced LIMIT. |
 | `test_fairness_audit.py` | 22 | Four-fifths arithmetic, the small-group floor, approval rate at the deployed threshold, empty groups. |
+| `test_proxy_detection.py` | 20 | Spearman, correlation ratio and Cramér's V arithmetic; the bias correction; the minimum level size; threshold partitioning. |
+| `test_reason_codes.py` | 19 | Who gets a notice, the four-reason cap, the contribution floor, the non-disclosable set, phrase collapsing. |
+| `test_threshold_sensitivity.py` | 16 | That the sweep reproduces the shipped threshold exactly, sweep monotonicity, and that it never rewrites `threshold.json`. |
 | `test_schema_context.py` | 14 | The compact schema block: tables and columns advertised, descriptions attached, token budget. |
 | `test_docker_utils.py` | 13 | Container-safe path resolution. |
 | `test_preprocessor.py` | 10 | Cleaning, feature derivation, the train/serve skew guard, the calibration identity. |
+
+Where a constant is a judgement call, the test asserts the counterfactual rather than the
+happy path: the proxy-detection floor is tested by showing that four rows out of a thousand
+take a statistic from 0.26 to 0.99 when it is lifted, the reason-code exclusion list by showing
+that without it a notice would lead with the applicant's region, and the four-reason cap by
+showing which two reasons get dropped. A constant nobody can break is not being tested.
 
 Two are worth calling out. `test_no_protected_attribute_appears_in_any_contribution` feeds an
 applicant row that *does* carry `code_gender`, `name_family_status`, `cnt_children` and
