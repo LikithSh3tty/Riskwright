@@ -325,7 +325,9 @@ def build() -> Path:
               highlight_row=2)
         fig.text(0.52, 0.40,
                  f"Cost of exclusion: {FAIRNESS['cost_of_exclusion']['roc_auc']:.4f} ROC-AUC.\n"
-                 "Identical split, seed and hyperparameters.",
+                 "Identical split, seed and hyperparameters.\n"
+                 "One holdout split, so not directly comparable\n"
+                 "to the cross-validated figures two slides on.",
                  fontsize=12.5, color=GOOD, fontweight="bold", va="top", linespacing=1.6)
 
         bullets(fig, [
