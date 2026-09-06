@@ -247,7 +247,7 @@ python -m src.ml.train             # 5-fold CV, both models, SHAP, rules
 python -m src.ml.train --quick     # single split, about 60 seconds
 python -m src.ml.train --fairness  # cost of excluding protected attributes
 python -m src.ml.fairness_audit    # disparate impact screen, no retrain
-pytest                             # 46 tests, no database needed
+pytest                             # 121 tests, no database needed
 
 uvicorn app.main:app --reload
 ```
@@ -861,10 +861,13 @@ still passes. Refusal questions are scored on whether the bot declined.
 ```bash
 python -m tests.run_chatbot_eval --versions v1 v2 v3 v4   # development set
 python -m tests.run_chatbot_eval --heldout --versions v4  # held-out set
+python -m tests.run_chatbot_variance --runs 5             # the same set, five times
 ```
 
-**Headline: 19/20 on held-out questions written after the prompt was frozen, against 100% on
-the development set.** The held-out number is the one to trust.
+**Headline: a mean of 17.8/20 on held-out questions written after the prompt was frozen,
+ranging from 16 to 19 across five runs, against 100% on the development set.** The held-out
+number is the one to trust, and the range matters more than the mean: this is a sampled system
+and a single score is one draw from a distribution, not a property of it.
 
 #### Held-out set
 
@@ -882,26 +885,49 @@ clarifications.
 
 | Set | Questions | v4 |
 |-----|-----------|-----|
-| Held out, written after freeze | 20 | **19/20, 95%** |
+| Held out, written after freeze | 20 | **17.8/20 mean, range 16-19, sd 1.30** |
 | Development, used for tuning | 30 | 30/30, 100% |
 
-Every held-out category passed except one. By category on the held-out set: aggregate ratio
-1/1, ambiguous 3/3, column ratio 1/1, conditional aggregate 0/1, distinct count 1/1, filtered
-extremum 1/1, group-by ranking 1/1, join 2/2, multi-filter 1/1, negated existence 1/1,
-non-existent column 2/2, null semantics 1/1, percentile 1/1, thresholded group count 1/1,
-unanswerable 1/1, unit conversion 1/1.
+#### The score is a distribution, not a number
 
-**The one failure is worth reading, because it is arguably the harness being wrong rather than
-the model.** H9 asks "What share of applicants own both a car and a property?". The reference
-returns a fraction, 0.235309. The model returned 23.53% and phrased it as "23.53% of applicants
-own both a car and a property". It computed the identical quantity and expressed it in the
-other conventional unit for the word "share". It is scored as a failure here regardless:
-relaxing the comparison after seeing the result would be fitting the grader to the outcome,
-which is exactly what a held-out set exists to prevent.
+The temperature is not zero, so the same twenty questions do not produce the same twenty
+answers twice. Five consecutive runs at v4, no prompt changes between them:
+
+| Run | Score |
+|-----|-------|
+| 1 | 19/20 |
+| 2 | 17/20 |
+| 3 | 16/20 |
+| 4 | 19/20 |
+| 5 | 18/20 |
+
+Mean **17.8/20 (89%)**, range 16-19, standard deviation 1.30. Figures are read from
+`models/chatbot_variance.json`, written by `python -m tests.run_chatbot_variance`.
+
+**This corrects an earlier claim in this README.** A single run scored 19/20 and that was
+reported as the held-out result. It is the best of five, not the typical one. One run of a
+sampled system is a sample, and quoting the good draw is how an evaluation flatters itself.
+
+Sixteen of the twenty questions are perfectly stable, passing 5/5. **No question failed all
+five runs**, so nothing here is broken outright. Four moved:
+
+| ID | Category | Passed | What varies |
+|----|----------|--------|-------------|
+| H2 | multi-filter | 2/5 | "How many unemployed applicants own property?" Alternates between answering and asking for clarification. It is a defensible hesitation: "unemployed" could mean the `days_employed` sentinel or a null `occupation_type`, and the failing runs say so. |
+| H5 | join | 2/5 | "On average, how many previous applications does an applicant have?" Returns 4.929 or 4.597 depending on whether the denominator is applicants who *have* prior applications or all applicants. Both readings are legitimate; the reference query picks one. |
+| H8 | unanswerable | 2/5 | Declined correctly twice and answered a question the data cannot support three times. This is the one that matters, and it is expanded below. |
+| H9 | conditional aggregate | 3/5 | Returns the share as 0.2353 or as 23.53. Identical quantity, the other conventional unit for "share". |
+
+Three of the four are the grader's convention meeting a defensible alternative reading, not the
+model being wrong. H8 is not. The comparisons were **not** relaxed after seeing these results:
+fitting the grader to the outcome is precisely what a held-out set exists to prevent, and the
+prompt was not touched either, for the same reason.
 
 An earlier, narrower held-out batch of 8 questions scored v3 at 7/8 twice and v4 at 6/8 then
 7/8, which showed **v4 had no reproducible advantage over v3 out of sample** even though it
-gained two questions on the development set. Those 8 are the first batch of the 20 above.
+gained two questions on the development set. Those 8 are the first batch of the 20 above. The
+variance measured above is the same effect seen properly: two runs were enough to suggest the
+scores moved, and five are enough to say by how much.
 
 #### Development set, as tuning history
 
@@ -924,7 +950,8 @@ The dataset cannot answer this: `application_train` records whether an applicant
 defaulted, not whether their application was approved, and `name_contract_status` in
 `previous_application` describes *prior* applications.
 
-In one run v4 refused it correctly. In another it answered:
+**Across five runs it declined correctly twice and answered three times.** When it answers,
+it answers like this:
 
 > 290,065 applicants were approved for the loan they applied for.
 
@@ -932,12 +959,20 @@ That number is real, the SQL was valid, and it answers a different question than
 asked. It is the most dangerous output this system can produce, because nothing about it looks
 wrong.
 
-**Refusal is therefore probabilistic, not guaranteed.** The schema validator makes it
-impossible to query a column that does not exist, which is a hard guarantee. Declining a
-question that is semantically unanswerable from columns that *do* exist is a judgement the
-model makes, and it does not make it identically every time. That distinction is stated here
-rather than buried, because a reader is entitled to know which safety properties are enforced
-and which are merely likely.
+**Refusal is therefore probabilistic, not guaranteed, and 2/5 is the measured rate on the one
+held-out question designed to test it.** The schema validator makes it impossible to query a
+column that does not exist, which is a hard guarantee. Declining a question that is
+semantically unanswerable from columns that *do* exist is a judgement the model makes, and it
+does not make it identically every time.
+
+Note what the failure is not. In the runs where it answered, it did not invent a column: it
+used real columns to compute a real number that answers a neighbouring question. Schema
+validation cannot catch that, because there is nothing invalid about the SQL. A production
+system would need a second check on whether the query actually answers what was asked, and
+that check is not built here.
+
+One question is also a thin basis for a rate. 2/5 has a wide confidence interval, and the
+honest reading is "this fails often enough to matter", not "this fails 60% of the time".
 
 #### The v3 failures that produced v4
 
@@ -1079,10 +1114,17 @@ trust this.
 
 - **Refusal is probabilistic, not guaranteed.** The schema validator makes querying a
   non-existent column impossible, which is a hard guarantee. Declining a question that is
-  semantically unanswerable from columns that *do* exist is a model judgement, and held-out
-  question H8 was refused in one run and answered wrongly in another.
-- Held-out accuracy is 19/20 against 100% on the development set. The development set was used
-  for tuning and its score is not a generalisation estimate.
+  semantically unanswerable from columns that *do* exist is a model judgement: across five
+  runs, held-out question H8 was declined twice and answered wrongly three times. When it
+  answers it uses real columns to compute a real number for a neighbouring question, which
+  no schema check can catch.
+- **Held-out accuracy is a distribution, not a number: mean 17.8/20, range 16-19 over five
+  runs**, against 100% on the development set. The development set was used for tuning and its
+  score is not a generalisation estimate. Sixteen of twenty questions are stable at 5/5 and
+  none fails every run; the four that move are listed under the evaluation section.
+- Five runs is a small sample for a variance estimate, and the per-question rates rest on five
+  observations each. They establish that the spread is real and roughly how wide, not a precise
+  failure probability for any one question.
 - Twenty held-out questions is still a modest sample, and they were written by the same person
   who wrote the prompt. An independently authored set would be a stronger test.
 - Conversation memory is in-process: it does not survive an API restart and does not scale
@@ -1113,10 +1155,16 @@ trust this.
   assignment, which lists saved model artifacts as a repository deliverable, and it means a
   fresh clone can serve predictions without training first.
 - No authentication on the API. Appropriate for an assignment, not for anything else.
-- The 46 tests cover `src/` only. There is no automated test coverage of the API layer in
-  `app/` and none of the React UI: both were verified by hand against a running stack. The
-  `employed_life_ratio` leak was found that way too, by comparing two frontends rather than by
-  a test, which is a fair indication of what hand-verification catches and what it does not.
+- The 121 tests cover `src/` and the `app/` request/response contracts. **The React UI has
+  no automated coverage** and is verified by hand against a running stack. Nor is anything
+  that needs a live database or a live LLM covered: the API tests mock the data layer, so
+  what is asserted is the contract, not the SQL underneath it. The chatbot is measured by
+  the evaluation harness instead of by pytest, which is a different kind of evidence.
+- The `employed_life_ratio` leak was found by hand, comparing what two frontends exposed,
+  not by a test. That is a fair indication of what hand-verification catches and what it
+  does not. There is now a test pinning the feature as *present*, so it cannot be removed
+  without the documentation moving with it, but nothing would have found it in the first
+  place.
 
 ---
 
@@ -1127,7 +1175,23 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-46 tests, no database required. They cover `src/`: the preprocessor's cleaning and derivation
-rules and the calibration identity, the chatbot's SQL validation gate, and the container-safe
-path helpers. The API layer and the React UI have no automated coverage and were verified by
-hand; that gap is listed under limitations.
+121 tests, no database required.
+
+| File | Tests | What it covers |
+|------|-------|----------------|
+| `test_api.py` | 39 | Endpoint contracts. `/predict` and `/explain` run the committed model and the real SHAP explainer against a synthetic applicant; only the Postgres reads are mocked. |
+| `test_query_runner.py` | 23 | The SQL validation gate: single-SELECT enforcement, table and column whitelisting, forced LIMIT. |
+| `test_fairness_audit.py` | 22 | Four-fifths arithmetic, the small-group floor, approval rate at the deployed threshold, empty groups. |
+| `test_schema_context.py` | 14 | The compact schema block: tables and columns advertised, descriptions attached, token budget. |
+| `test_docker_utils.py` | 13 | Container-safe path resolution. |
+| `test_preprocessor.py` | 10 | Cleaning, feature derivation, the train/serve skew guard, the calibration identity. |
+
+Two are worth calling out. `test_no_protected_attribute_appears_in_any_contribution` feeds an
+applicant row that *does* carry `code_gender`, `name_family_status`, `cnt_children` and
+`cnt_fam_members` through the real serving path and asserts none of them reaches a SHAP
+contribution: the fair-lending claim as a regression guard rather than a paragraph. And
+`test_the_known_age_proxy_is_still_present_and_still_documented` asserts the opposite of what
+you would expect, pinning `employed_life_ratio` as present so that removing it cannot happen
+without the retrain and the documentation moving too.
+
+The React UI has no automated coverage; that gap is listed under limitations.

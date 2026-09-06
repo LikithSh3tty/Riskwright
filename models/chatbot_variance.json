@@ -1,0 +1,329 @@
+{
+  "generated_at": "2026-09-06T12:22:10.143269+00:00",
+  "prompt_version": "v4",
+  "question_set": "tests/chatbot_heldout.yaml",
+  "runs": 5,
+  "per_run": [
+    {
+      "run": 1,
+      "passed": 19,
+      "total": 20,
+      "accuracy": 0.95,
+      "total_tokens": 69087,
+      "median_latency_ms": 2532
+    },
+    {
+      "run": 2,
+      "passed": 17,
+      "total": 20,
+      "accuracy": 0.85,
+      "total_tokens": 69254,
+      "median_latency_ms": 2571
+    },
+    {
+      "run": 3,
+      "passed": 16,
+      "total": 20,
+      "accuracy": 0.8,
+      "total_tokens": 69205,
+      "median_latency_ms": 2472
+    },
+    {
+      "run": 4,
+      "passed": 19,
+      "total": 20,
+      "accuracy": 0.95,
+      "total_tokens": 69268,
+      "median_latency_ms": 2665
+    },
+    {
+      "run": 5,
+      "passed": 18,
+      "total": 20,
+      "accuracy": 0.9,
+      "total_tokens": 69193,
+      "median_latency_ms": 2520
+    }
+  ],
+  "score": {
+    "min": 16,
+    "max": 19,
+    "range": 3,
+    "mean": 17.8,
+    "stdev": 1.3038404810405297,
+    "total": 20,
+    "mean_accuracy": 0.89
+  },
+  "questions": [
+    {
+      "id": "H1",
+      "category": "percentile",
+      "question": "What is the 90th percentile of loan amount?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H2",
+      "category": "multi_filter",
+      "question": "How many unemployed applicants own property?",
+      "expected": "sql",
+      "passed_runs": 2,
+      "runs": 5,
+      "stable": false,
+      "always_failed": false,
+      "actions_seen": [
+        "clarify",
+        "sql"
+      ]
+    },
+    {
+      "id": "H3",
+      "category": "column_ratio",
+      "question": "On average, how large is the loan compared to the price of the goods being financed?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H4",
+      "category": "distinct_count",
+      "question": "How many different types of credit appear in the bureau records?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H5",
+      "category": "join",
+      "question": "On average, how many previous applications does an applicant have?",
+      "expected": "sql",
+      "passed_runs": 2,
+      "runs": 5,
+      "stable": false,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H6",
+      "category": "groupby_ranking",
+      "question": "Which housing type has the lowest default rate?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H7",
+      "category": "ambiguous",
+      "question": "Show me the large loans.",
+      "expected": "clarify",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "clarify"
+      ]
+    },
+    {
+      "id": "H8",
+      "category": "unanswerable",
+      "question": "How many applicants were approved for the loan they applied for?",
+      "expected": "refuse",
+      "passed_runs": 2,
+      "runs": 5,
+      "stable": false,
+      "always_failed": false,
+      "actions_seen": [
+        "clarify",
+        "sql"
+      ]
+    },
+    {
+      "id": "H9",
+      "category": "conditional_aggregate",
+      "question": "What share of applicants own both a car and a property?",
+      "expected": "sql",
+      "passed_runs": 3,
+      "runs": 5,
+      "stable": false,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H10",
+      "category": "null_semantics",
+      "question": "How many applicants have no occupation recorded?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H11",
+      "category": "filtered_extremum",
+      "question": "What is the smallest loan given to someone earning more than 500000?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H12",
+      "category": "negated_existence",
+      "question": "How many applicants have no bureau record at all?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H13",
+      "category": "thresholded_group_count",
+      "question": "How many income types have more than 10000 applicants?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H14",
+      "category": "aggregate_ratio",
+      "question": "What fraction of all money lent went to applicants who defaulted?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H15",
+      "category": "unit_conversion",
+      "question": "What is the average age of applicants in years?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H16",
+      "category": "join",
+      "question": "What proportion of previous applications were approved?",
+      "expected": "sql",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "sql"
+      ]
+    },
+    {
+      "id": "H17",
+      "category": "nonexistent_column",
+      "question": "What is the average salary for each occupation in the wider economy?",
+      "expected": "refuse",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "refuse"
+      ]
+    },
+    {
+      "id": "H18",
+      "category": "nonexistent_column",
+      "question": "What is each applicant's current account balance?",
+      "expected": "refuse",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "refuse"
+      ]
+    },
+    {
+      "id": "H19",
+      "category": "ambiguous",
+      "question": "What is the typical loan?",
+      "expected": "clarify",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "clarify"
+      ]
+    },
+    {
+      "id": "H20",
+      "category": "ambiguous",
+      "question": "Compare good and bad customers.",
+      "expected": "clarify",
+      "passed_runs": 5,
+      "runs": 5,
+      "stable": true,
+      "always_failed": false,
+      "actions_seen": [
+        "clarify"
+      ]
+    }
+  ],
+  "unstable_questions": [
+    "H2",
+    "H5",
+    "H8",
+    "H9"
+  ],
+  "always_failed_questions": [],
+  "note": "Repeated runs of the same held-out set at the same prompt version. The prompt was not changed in response to these results: tuning against a held-out set is what stops it being one."
+}

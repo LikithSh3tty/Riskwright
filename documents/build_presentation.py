@@ -56,6 +56,7 @@ RULES = load("rules.json")
 POLICY = load("rules_without_external_scores.json")
 FAIRNESS = load("fairness_comparison.json")
 AUDIT = load("fairness_audit.json")
+VARIANCE = load("chatbot_variance.json")
 SHAP_GLOBAL = load("shap_global.json")
 
 
@@ -253,23 +254,28 @@ def build() -> Path:
         ax.set_ylabel("Development set accuracy")
         ax.spines[["top", "right"]].set_visible(False)
 
+        score = VARIANCE["score"]
+        runs = "  ".join(str(r["passed"]) for r in VARIANCE["per_run"])
+        stable = sum(1 for q in VARIANCE["questions"] if q["stable"])
         bullets(fig, [
             "**The development set is a tuning history,**",
             "**not a generalisation estimate.**",
             "v4 was tuned on the failures v3 exposed, so",
             "its 100% is optimistic by construction.",
             "",
-            "**Held out: 20 questions written after**",
-            "**the prompt was frozen, in two batches.**",
-            "     v4    19 / 20      95%",
+            "**Held out: 20 questions written after the**",
+            "**prompt was frozen. Run five times.**",
+            f"     {runs}   out of {score['total']}",
+            f"     mean {score['mean']:.1f}   range "
+            f"{score['min']}-{score['max']}   sd {score['stdev']:.2f}",
             "",
-            "16 categories. The one failure returned",
-            "the right quantity as a percentage where",
-            "the reference used a fraction, and is",
-            "scored as a failure regardless: relaxing",
-            "the grader after seeing the result would",
-            "defeat the point of holding a set out.",
-        ], x=0.54, y=0.74, dy=0.048, size=12.5)
+            f"{stable} of 20 are stable at 5/5 and none",
+            "fails every run. A single run scored 19 and",
+            "was once reported as the result; it is the",
+            "best of five, not the typical one. One draw",
+            "from a sampled system is not a property",
+            "of it.",
+        ], x=0.54, y=0.745, dy=0.0455, size=12.5)
         pdf.savefig(fig); plt.close(fig)
 
         # 6. Refusal and the validation gate ---------------------------------
@@ -510,13 +516,15 @@ def build() -> Path:
             "",
             "**Idempotent load.** 740MB in about 150 seconds; a second start skips it in one.",
             "",
-            "**46 tests.** The validation gate, the train/serve skew guard, the calibration",
-            "identity, path resolution, and API shapes.",
+            "**121 tests, no database needed.** The validation gate, the train/serve skew",
+            "guard, the calibration identity, path resolution, four-fifths arithmetic, and",
+            "the API contracts -- one of which asserts no protected attribute reaches a",
+            "SHAP contribution, on the real serving path.",
             "",
             "**Token cost.** Schema block is 1,656 tokens, not the ~6,000 a full dump would be.",
             "Caching is wired but measured not to engage: Haiku 4.5 needs a 4,096 token prefix.",
             "Confirmed by padding to 7,393 tokens and watching the cache write, then read.",
-        ], y=0.76, dy=0.0445, size=12)
+        ], y=0.765, dy=0.0415, size=12)
         pdf.savefig(fig); plt.close(fig)
 
         # 14. Limitations -------------------------------------------------------
@@ -524,25 +532,26 @@ def build() -> Path:
                        "The limitations that would matter to someone deciding to trust it.")
         bullets(fig, [
             "**Refusal is probabilistic, not guaranteed.** The validator makes querying a",
-            "non-existent column impossible. Declining a question that is semantically",
-            "unanswerable from columns that do exist is a model judgement: held-out H8 was",
-            "refused in one run and answered wrongly in another.",
+            "non-existent column impossible. Declining a semantically unanswerable question",
+            "is a model judgement: across five runs held-out H8 was declined twice and",
+            "answered wrongly three times, using real columns for a neighbouring question.",
+            "",
+            "**The held-out score is a distribution,** not a number: mean 17.8/20, range",
+            "16-19 over five runs. Twenty questions, written by the person who wrote the",
+            "prompt. An independently authored set, and more runs, are both the next step.",
             "",
             "**The model ignores two of the three loaded tables.** bureau and",
-            "previous_application serve the chatbot only. Prior credit history is the largest",
-            "improvement available, worth roughly 0.02-0.03 ROC-AUC in published work.",
+            "previous_application serve the chatbot only; prior credit history is the",
+            "largest improvement available, worth roughly 0.02-0.03 ROC-AUC.",
             "",
-            "**Twenty held-out questions is a modest sample,** written by the person who",
-            "wrote the prompt. An independently authored set is the next step.",
+            "**Fair lending work is incomplete.** Exclusion did not hold: age reaches the",
+            "model through employed_life_ratio, and two of three attributes fail the",
+            "four-fifths screen. Business-necessity analysis, systematic proxy detection",
+            "and adverse action codes are not built.",
             "",
-            "**Fair lending work is incomplete.** Exclusion did not hold: age reaches the model",
-            "through employed_life_ratio, and two of three attributes fail the four-fifths",
-            "screen. The business-necessity analysis that would interpret those failures,",
-            "systematic proxy detection, and adverse action codes are not built.",
-            "",
-            "**No automated coverage of app/ or the UI.** The 46 tests cover src/ only.",
-            "**Conversation memory is in-process.** It does not survive a restart.",
-        ], y=0.765, dy=0.0395, size=11.5)
+            "**The React UI has no automated coverage.** The 121 tests cover src/ and the",
+            "app/ contracts. **Conversation memory is in-process:** it dies on restart.",
+        ], y=0.765, dy=0.0375, size=11.5)
         pdf.savefig(fig); plt.close(fig)
 
         # 14+. Screenshots -------------------------------------------------------
