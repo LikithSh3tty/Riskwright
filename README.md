@@ -92,6 +92,7 @@ restructure, the following were added:
 | `src/ml/fairness_audit.py` | Disparate impact screen against the served model. Not required; see **Fair lending** |
 | `src/ml/proxy_detection.py` | Scores all 120 features against each excluded attribute. Not required; see **Fair lending** |
 | `src/ml/reason_codes.py` | ECOA adverse action reasons from the SHAP contributions. Not required; see **Explainability** |
+| `src/ml/threshold_sensitivity.py` | Sweeps the cost ratio to bound the threshold assumption. Not required; see **Model** |
 | `app/` | FastAPI layer, so the UI holds no business logic and stays replaceable |
 | `frontend/` | Part 5 requires a UI; the tree names no location for one |
 | `configs/` | Training and application configuration, plus the column glossary |
@@ -434,6 +435,59 @@ Precision of 0.180 is low in isolation, and deliberately so. Under a 10:1 cost r
 64% of defaulters is worth refusing a large number of applicants who would have repaid. That
 is the cost assumption doing its job, not the model failing.
 
+### How much rests on the 10:1 assumption
+
+The ratio was stated so it could be argued with. That is the minimum, and it is not the same as
+knowing how much turns on it. So it was swept.
+
+```bash
+python -m src.ml.threshold_sensitivity
+```
+
+Nine ratios from 3:1 to 20:1, each re-optimised on the same out-of-fold predictions.
+Figures read from `models/threshold_sensitivity.json`.
+
+| Ratio | `t_high` | Approval rate | Defaulters caught | Missed | Cost saving vs 0.5 |
+|-------|----------|---------------|-------------------|--------|--------------------|
+| 3:1 | 0.228376 | 94.9% | 5,215 | 19,610 | 6.7% |
+| 4:1 | 0.187386 | 91.5% | 7,465 | 17,360 | 11.2% |
+| 5:1 | 0.161530 | 88.6% | 9,172 | 15,653 | 15.9% |
+| 6:1 | 0.121824 | 81.9% | 12,316 | 12,509 | 20.4% |
+| 8:1 | 0.106761 | 78.4% | 13,637 | 11,188 | 28.2% |
+| **10:1 (shipped)** | **0.083669** | **71.1%** | **15,979** | **8,846** | **34.9%** |
+| 12:1 | 0.068864 | 64.8% | 17,624 | 7,201 | 40.5% |
+| 15:1 | 0.056057 | 57.8% | 19,182 | 5,643 | 47.4% |
+| 20:1 | 0.040736 | 46.4% | 21,150 | 3,675 | 56.1% |
+
+**The answer is that a great deal rests on it.** `t_high` moves from 0.0407 to 0.2284 across the
+range — a spread of **2.2 times the shipped threshold itself**. The approval rate swings from
+46% to 95%. Choosing by cost still beats 0.5 at every ratio, so the *method* is robust even
+where the number is not; but the number is not.
+
+**Only 51.5% of applicants keep the same risk band across the whole sweep.** Nearly half would
+be banded differently under a ratio that is no less defensible than 10:1. That is the concrete
+form of the assumption: it is not a modelling detail, it is the single input that decides
+whether an applicant is auto-approved, reviewed, or declined.
+
+Two things follow, and they pull in opposite directions:
+
+- **The 10:1 figure needs a real recovery model behind it before this is deployable.** A
+  measured loss-given-default and a measured cost of a lost good customer would replace an
+  assumption that currently moves half the book.
+- **The threshold is not arbitrary, and the sensitivity does not make it so.** Every ratio in
+  the table produces a threshold far below 0.5, and the cost saving against the naive choice is
+  positive throughout — from 6.7% at 3:1 to 56.1% at 20:1. What is uncertain is *where* to put
+  the threshold, not *whether* 0.5 is wrong. It is.
+
+**The deployed threshold does not change.** 10:1 remains shipped, `models/threshold.json` is not
+rewritten by the sweep, and every other figure in this README continues to describe the shipped
+decision. The sweep runs entirely from saved artifacts with no retrain.
+
+One basis note, because two approval rates appear in this README and they differ. The 71.1% here
+is computed on out-of-fold predictions, where each applicant was scored by a model that had not
+seen them. The 70.39% under **Fair lending** is computed with the served model, which is refit
+on all rows. Both are correct for what they measure; they are not the same measurement.
+
 ### Reproducing
 
 ```bash
@@ -443,6 +497,7 @@ python -m src.ml.train --artifacts  # rebuild SHAP and rules from the saved mode
 python -m src.ml.train --fairness   # cost of excluding the protected attributes
 python -m src.ml.fairness_audit     # disparate impact screen, no retrain
 python -m src.ml.proxy_detection    # which features reconstruct a protected attribute
+python -m src.ml.threshold_sensitivity  # cost ratio sweep, no retrain
 ```
 
 `fairness_audit` reads the saved model rather than fitting one, so it takes seconds and does
@@ -1237,8 +1292,12 @@ trust this.
 - Still not done: business-necessity analysis, systematic proxy detection, adverse action
   reason codes, and reject inference. Several residual proxies remain and are listed in that
   section. Not deployable without that work.
-- The 10:1 cost ratio is an assumption, not a measurement. Every threshold and band moves if a
-  real recovery model replaces it.
+- **The 10:1 cost ratio is still an assumption, but a bounded one.** Sweeping 3:1 to 20:1 moves
+  `t_high` from 0.0407 to 0.2284 — 2.2 times the shipped threshold — and the approval rate from
+  46% to 95%. Only 51.5% of applicants keep the same risk band across that range, so the
+  assumption decides the outcome for nearly half the book. Choosing by cost beats 0.5 at every
+  ratio, so the method survives; the number needs a real recovery model. Measured in
+  `models/threshold_sensitivity.json`.
 
 **Explainability**
 
