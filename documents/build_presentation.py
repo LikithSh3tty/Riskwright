@@ -148,7 +148,7 @@ def build() -> Path:
         fig, _ = slide(pdf, "Architecture",
                        "All business logic in src/. The UI computes nothing.")
         fig.text(0.06, 0.72,
-                 "  Streamlit UI          no logic, HTTP client only\n"
+                 "  Streamlit or React    no logic, HTTP client only\n"
                  "        |\n"
                  "        v  HTTP\n"
                  "  FastAPI               thin wrapper: validates, shapes\n"
@@ -171,6 +171,11 @@ def build() -> Path:
             "loader, one-shot and idempotent",
             "api, waits on both",
             "ui, waits on api health",
+            "",
+            "A React frontend is added by a",
+            "separate override file on its own",
+            "port. The base compose file is",
+            "untouched by it.",
             "",
             "**Why it matters**",
             "Startup races are the usual",
