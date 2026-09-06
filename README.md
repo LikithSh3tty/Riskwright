@@ -19,7 +19,7 @@ Built for the NeoStats AI Engineer assignment.
 | Machine learning layer (default probability, risk band) | done |
 | Explainable AI (SHAP per prediction) | done |
 | Business-readable decision rules | done |
-| Multi-section user interface | done |
+| Multi-section user interface | done, Streamlit and React |
 | Dockerized deployment | done |
 
 ## Data loaded
@@ -73,6 +73,7 @@ src/
   utils/                  Logging, configuration, helpers, container-safe paths
 app/                      FastAPI. A thin wrapper over src/, no business logic.
 ui/                       Streamlit client. Calls HTTP endpoints only.
+frontend/                 Optional React client, nginx served. Same endpoints.
 sql/schema.sql            Generated DDL for the three loaded tables
 configs/                  Configuration and the official column glossary
 models/                   Saved model artifacts
@@ -191,11 +192,18 @@ You will need roughly 3GB free for the extracted CSVs and another 2GB for the Po
 docker-compose up
 ```
 
+To also start the optional React frontend, add the override file:
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.react.yml up
+```
+
 Then open:
 
 | Service | URL |
 |---------|-----|
-| UI | http://localhost:8501 |
+| Streamlit UI | http://localhost:8501 |
+| React UI (only with the override) | http://localhost:5173 |
 | API docs | http://localhost:8000/docs |
 | Health check | http://localhost:8000/health |
 
@@ -313,7 +321,7 @@ The Anthropic API key is scoped to the `api` service only. It never reaches the 
 | Postgres over SQLite | The chatbot generates real SQL against a real engine, and Compose orchestrates something meaningful rather than a single file. |
 | Three tables, not seven | `application_train`, `bureau`, and `previous_application` support genuine join queries. The remaining four add about 1.9GB of load time and answer no question the assignment asks. |
 | Column names lowercased on load | Postgres folds unquoted identifiers to lowercase. Normalising once at load time means generated SQL never needs quoting, which removes an entire class of LLM error. |
-| Streamlit, not React | A deliberate scope decision, not an omission. See below. |
+| Streamlit first, React added after | Streamlit carried the submission; React was added later as an optional upgrade that changes nothing about the API. See below. |
 | Claude Haiku 4.5 | Cheap enough to iterate prompts heavily, and strong at SQL over a compact schema. A small model is sufficient when the schema sent to it is small. |
 | Exact version pins | The model is trained locally and served in a container. Unpinned scikit-learn or LightGBM between the two silently changes predictions. |
 | Types inferred over the full CSV, not a sample | Several columns are integral in the first 100k rows and fractional later. A sampled schema would fail the COPY halfway through a 400MB file. |
@@ -430,22 +438,37 @@ python -m src.ml.train --quick      # single split, LightGBM only, about 60 seco
 python -m src.ml.train --artifacts  # rebuild SHAP and rules from the saved model
 ```
 
-### Why Streamlit and not React
+### Two frontends, and why
 
-This was considered and declined on purpose.
+Streamlit came first and is what the submission was built and verified around. The evaluation
+criteria contain no line for frontend quality, so the time that a React build would have taken
+went into the chatbot evaluation harness, the held-out question set, and the fair lending work
+instead, all of which sit against criteria that are scored.
 
-The evaluation criteria contain no line for frontend quality. A React frontend would have
-consumed most of a session on a Vite build, a multi-stage Dockerfile, and an nginx proxy, to
-produce the same five sections consuming the same five endpoints, for zero additional scored
-points and a real chance of ending with a half-working frontend.
+A React frontend was then added afterwards as a strict upgrade, once the Streamlit build was
+complete and tagged. It consumes exactly the same endpoints, adds no API surface, and lives
+behind a separate compose file so the original stack is untouched:
 
-That time went into the chatbot evaluation harness, the held-out question set, and the fair
-lending work instead, all of which sit against criteria that are scored.
+```bash
+docker-compose up                    # Postgres, API, Streamlit on 8501
 
-The architecture does not preclude it. The UI holds no business logic, reads every value over
-HTTP, and keeps conversation state server-side behind a session id. Swapping it is a change to
-one compose service, not a rewrite. That property was designed in from session one; it simply
-was not spent.
+docker-compose -f docker-compose.yml -f docker-compose.react.yml up
+                                     # the same, plus React on 5173
+```
+
+Both UIs can run at once because they bind different ports. `docker-compose.yml` is byte
+identical to the version tagged `v1.2-submission`; the React service is added purely by the
+override file.
+
+The React client is Vite plus React, built in a multi-stage Dockerfile and served by nginx,
+which also proxies `/api/*` to the API service. The browser therefore never learns the API's
+host, and no `VITE_*` variable is used: Vite inlines those into the client bundle at build
+time, so the Anthropic key stays in the `api` service where it is set. The built bundle is
+checked for key material as part of the release routine.
+
+That this was cheap to add is the point of the layering. The UI holds no business logic, reads
+every value over HTTP, and keeps conversation state server side behind a session id, so a
+second frontend was a new compose service rather than a rewrite.
 
 ## Fair lending
 
