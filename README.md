@@ -91,6 +91,7 @@ restructure, the following were added:
 | `src/ml/rules.py` | Rule derivation module (listed under expected deliverables) |
 | `src/ml/fairness_audit.py` | Disparate impact screen against the served model. Not required; see **Fair lending** |
 | `src/ml/proxy_detection.py` | Scores all 120 features against each excluded attribute. Not required; see **Fair lending** |
+| `src/ml/reason_codes.py` | ECOA adverse action reasons from the SHAP contributions. Not required; see **Explainability** |
 | `app/` | FastAPI layer, so the UI holds no business logic and stays replaceable |
 | `frontend/` | Part 5 requires a UI; the tree names no location for one |
 | `configs/` | Training and application configuration, plus the column glossary |
@@ -750,9 +751,10 @@ Excluding the attributes is the floor, not the bar:
   attribute from the whole feature matrix and report its accuracy. Features individually below
   the threshold can reconstruct an attribute together, and `employed_life_ratio` at 0.074 is
   the proof that they do.
-- **Adverse action reason codes.** ECOA requires a declined applicant to be told why. The SHAP
-  contributions are the right raw material, but they need mapping to a fixed, reviewed set of
-  reasons, not free-generated text.
+- **A rule-based adverse action engine.** The reason codes above are built and serve a fixed,
+  reviewed vocabulary rather than free-generated text, which closes the mechanical half. What
+  remains is deriving the reasons from the credit policy rather than from SHAP attributions,
+  and agreeing the enumerated set with counsel.
 - **Ongoing monitoring.** Fairness is not established once at training time. Population drift
   can reintroduce disparate impact from an unchanged model.
 - **Reject inference.** The training data contains only accepted applicants, so the model
@@ -790,6 +792,71 @@ years rather than printed raw.
 Global importance is `mean(|SHAP|)` over a 2,000-row sample, computed once at training time
 and served from `models/shap_global.json`. The strongest drivers are the three external credit
 scores, loan term, and the price of the goods financed.
+
+### Adverse action reason codes
+
+ECOA and Regulation B require a creditor who denies an application to give the applicant the
+**specific principal reasons** for the denial. A score, or a list of everything the model
+looked at, does not satisfy that. The reasons have to be the ones that drove this decision and
+they have to be intelligible to the person receiving them.
+
+The SHAP contributions are the right raw material and are not themselves reason codes.
+`ext_source_3 = 0.19, shap_value = +0.847` is a model diagnostic.
+`src/ml/reason_codes.py` is the mapping between the two.
+
+```bash
+curl -X POST localhost:8000/adverse-action -H 'content-type: application/json' \
+  -d '{"sk_id_curr": 100002}'
+curl localhost:8000/adverse-action/reason-codes    # the vocabulary itself
+```
+
+A separate endpoint rather than extra fields on `/explain`: that response is a published
+contract the frontend renders directly, and a disclosure concern should not risk changing a
+chart.
+
+**Worked example.** Applicant 100002 scores 0.4491, above `t_high` = 0.083669, so a notice is
+required:
+
+| Rank | Reason given | Driven by | SHAP |
+|------|--------------|-----------|------|
+| 1 | Credit assessment obtained from an external credit bureau | `ext_source_3`, `ext_source_1`, `ext_source_2` | 0.847 |
+| 2 | Length of the repayment term relative to the amount requested | `credit_term` | 0.221 |
+| 3 | Value of the goods being financed relative to the credit requested | `amt_goods_price` | 0.159 |
+| 4 | Length of time in your current employment | `days_employed` | 0.088 |
+
+Applicant 100003 scores 0.0188 and receives `adverse_action_required: false` with an empty
+reason list. An approved applicant gets no notice, and the reasons are not computed rather than
+computed and withheld.
+
+Four design decisions carry the weight:
+
+- **The phrases are a fixed table in source, versioned as `rc-v1`.** None is generated at
+  request time. An adverse action notice is a regulated disclosure: the same input must produce
+  the same words, and the wording is something a compliance function signs off once. A
+  generated notice cannot be reviewed before it is sent, and two applicants declined for the
+  same reason would receive different letters.
+- **Four reasons maximum.** Regulation B's model forms list up to four principal reasons and
+  treat more as diluting the notice. A floor on contribution size stops an applicant declined
+  on two clear factors receiving four, two of which are noise.
+- **Duplicate reasons collapse.** The three external bureau scores are three features and one
+  reason. The example above shows all three folding into rank 1, which keeps its combined
+  ranking weight.
+- **Some features are never disclosed.** `weekday_appr_process_start` has no causal story an
+  applicant could act on. The geographic columns would make a notice read as redlining whatever
+  the model's reason for using them. The social-circle columns describe other people's conduct,
+  not the applicant's — both were withheld from applicant 100002's notice above, and the
+  response says so in `diagnostics.withheld_non_disclosable` rather than dropping them
+  silently.
+
+**The limitation, stated plainly: these are SHAP attributions dressed as reasons, not a
+rule-based adverse action engine.** A production system derives reasons from the credit policy.
+It knows that "insufficient income for the amount requested" is a reason a lender may give and
+that a postcode is not, and it maps to a fixed enumerated set agreed with counsel. Two things
+follow. A feature can be a legitimate driver of risk and still be unusable in a letter, which
+is why the exclusion list above exists and why it is a judgement call rather than a
+calculation. And ranking by SHAP magnitude ranks by influence on this prediction, not by what
+a reviewer would call the principal cause; those usually agree, but they are not the same
+thing. What is here is the raw material correctly shaped, not the finished compliance control.
 
 ## Rule derivation
 
