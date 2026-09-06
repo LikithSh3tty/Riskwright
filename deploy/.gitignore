@@ -1,0 +1,11 @@
+# Deployment-local artefacts. Kept here rather than in the repository root so
+# every file outside deploy/ stays byte-identical to v2.3-hardening.
+
+# The seeded dump is the dataset in another form: ~200MB of applicant rows,
+# built locally by make_seed.sh and baked into the published image. The
+# submission instructions say the dataset does not go in git, and that applies
+# to it in this shape too.
+postgres/*.sql.gz
+
+# Host configuration. Holds the Anthropic key and the database passwords.
+.env

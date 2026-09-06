@@ -1,0 +1,91 @@
+# Riskwright, hosted.
+#
+# The same topology as the repository's docker-compose.yml, with two
+# differences and no third:
+#
+#   1. It pulls published images instead of building them.
+#   2. There is no loader service -- the data ships inside the postgres image,
+#      seeded from the output of that same loader run locally.
+#
+# Everything else is deliberately identical: the healthchecks, the dependency
+# conditions, the restart policy, and the rule that only the frontend is
+# reachable from outside. The startup ordering is load-bearing rather than
+# decorative; a race where the API starts before Postgres accepts connections
+# is the usual reason a deployment comes up broken.
+#
+#   docker compose -f docker-compose.deploy.yml pull
+#   docker compose -f docker-compose.deploy.yml up -d
+
+services:
+  postgres:
+    image: likithsh3tty/riskwright-postgres:v2.3
+    container_name: riskwright-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-riskwright}
+      POSTGRES_USER: ${POSTGRES_USER:-riskwright}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Read by the image's init script on first boot to recreate the
+      # read-only role. pg_dump does not carry roles, so without this the
+      # chatbot's SELECT-only principal would not exist.
+      POSTGRES_RO_USER: ${POSTGRES_RO_USER:-riskwright_ro}
+      POSTGRES_RO_PASSWORD: ${POSTGRES_RO_PASSWORD:?set POSTGRES_RO_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # No ports. Nothing outside the compose network talks to the database.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-riskwright} -d ${POSTGRES_DB:-riskwright}"]
+      interval: 5s
+      timeout: 5s
+      # The first boot restores a ~200MB dump before Postgres accepts
+      # connections, so the window here is wider than the repo's. Subsequent
+      # starts skip the restore and are quick.
+      retries: 60
+      start_period: 60s
+    restart: unless-stopped
+
+  api:
+    image: likithsh3tty/riskwright-api:v2.3
+    container_name: riskwright-api
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-riskwright}
+      POSTGRES_USER: ${POSTGRES_USER:-riskwright}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_RO_USER: ${POSTGRES_RO_USER:-riskwright_ro}
+      POSTGRES_RO_PASSWORD: ${POSTGRES_RO_PASSWORD:?set POSTGRES_RO_PASSWORD in .env}
+      # Supplied on the host at run time. It is not in any image and not in
+      # this repository.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    # No ports. The browser reaches the API only through nginx's /api/ proxy,
+    # so the API's host is never exposed and never learned by the client.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: likithsh3tty/riskwright-frontend:v2.3
+    container_name: riskwright-frontend
+    ports:
+      # The only thing published. 80 so the evaluator opens a bare hostname.
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    # No environment block, on purpose. Vite inlines VITE_* values into the
+    # bundle at build time, so anything named here would ship to the browser.
+    # The Anthropic key belongs to the api service and stays there.
+
+volumes:
+  pgdata:

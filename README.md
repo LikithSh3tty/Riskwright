@@ -1398,6 +1398,45 @@ repository, so the PDF cannot be regenerated from the artifacts. If a figure in 
 changes, the deck will not follow it. Every other number in this README is still checked
 against the artifacts, and the deck agreed with them when it was exported.
 
+## Deployment
+
+The platform is packaged to run hosted from three published images, with the
+database seeded from a local run of the same loader. The images are built and
+pushed from this commit, so a hosted instance runs exactly what the repository
+describes.
+
+> **Status:** the images are not yet on Docker Hub and no instance is live. The
+> deployment files below are complete and unverified; `deploy/README.md` is the
+> host procedure. This note goes away when the images are pushed and the URL is
+> filled in.
+
+**Live:** `http://<pending>`
+
+| Image | Contents |
+|-------|----------|
+| `likithsh3tty/riskwright-api:v2.3` | Built from the repository's `Dockerfile`, unchanged |
+| `likithsh3tty/riskwright-frontend:v2.3` | Built from `frontend/Dockerfile`, unchanged |
+| `likithsh3tty/riskwright-postgres:v2.3` | `postgres:16-alpine` plus a dump of the loaded database and the read-only role |
+
+`deploy/docker-compose.deploy.yml` differs from this repository's
+`docker-compose.yml` in exactly two ways: it **pulls** the images rather than
+building them, and it has **no loader service**, because the data ships inside
+the postgres image. The healthchecks, dependency conditions, restart policy and
+the rule that only the frontend is published are identical.
+
+The loader does not run on the VM. It streams 740MB of CSV through pandas, and
+doing that on a small host would also mean putting Kaggle credentials on a
+public box. Seeding from a dump means what is deployed is the *output* of the
+verified loader rather than a second implementation of it. `pg_dump` does not
+carry roles, so the image reprovisions `riskwright_ro` on first boot and checks
+its grants — the SELECT-on-three-tables property is a documented security claim
+and had to survive the move.
+
+The Anthropic key is supplied on the host at run time. It is in no image and in
+no file in this repository.
+
+Host setup, sizing and troubleshooting: **[deploy/README.md](deploy/README.md)**.
+
 ## Known limitations
 
 Specific rather than vague, because the vague version is useless to anyone deciding whether to
