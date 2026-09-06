@@ -281,8 +281,14 @@ def read_table(
     table: str,
     columns: list[str] | None = None,
     limit: int | None = None,
+    order_by: str | None = None,
 ) -> pd.DataFrame:
     """Read a whitelisted table into pandas.
+
+    order_by matters whenever a LIMIT is involved. Postgres is free to return
+    any rows for an unordered LIMIT, and the plan it picks depends on which
+    columns are selected, so two apparently similar queries return different
+    slices. Callers that page or sample must pass it.
 
     Training reads from Postgres rather than from the CSV so that the model
     sees exactly the same values, types, and column casing as the chatbot and
@@ -293,6 +299,10 @@ def read_table(
 
     selection = ", ".join(columns) if columns else "*"
     query = f"SELECT {selection} FROM {table}"
+    if order_by:
+        if order_by not in (columns or [order_by]):
+            raise ValueError(f"cannot order by {order_by!r}; it is not selected")
+        query += f" ORDER BY {order_by}"
     if limit:
         query += f" LIMIT {int(limit)}"
 

@@ -524,16 +524,12 @@ input[type="number"].control { -moz-appearance: textfield; }
  * Recharts' ResponsiveContainer narrows its box but was measured here still
  * drawing a wider surface inside it, which clips the plot instead of reflowing
  * it. Rather than depend on that behaviour, chart blocks get their own
- * horizontal scroll below the rail breakpoint with a floor wide enough for the
- * axes to stay legible. A chart the reader can pan is honest; a chart silently
- * cropped at the container edge is not.
+ * horizontal scroll below the rail breakpoint. A chart the reader can pan is
+ * honest; a chart silently cropped at the container edge is not.
  */
 @media (width <= 860px) {
   .chart-scroll {
     overflow-x: auto;
     overscroll-behavior-x: contain;
-  }
-  .chart-scroll > * {
-    min-width: 560px;
   }
 }

@@ -91,9 +91,9 @@ function ExistingApplicant({ onScored }) {
                   ))}
                 </select>
                 <span className="field-hint">
-                  {data.count} applicants, as /applicants returns them. The endpoint applies no
-                  ORDER BY, so this is a stable but arbitrary window rather than the first rows
-                  or a held-out sample.
+                  The first {data.count} applicants by id. These are training rows: the served
+                  model is refit on all of them, so a score here is a demonstration of the
+                  interface, not evidence of out-of-sample performance.
                 </span>
               </div>
 

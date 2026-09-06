@@ -67,6 +67,18 @@ def applicants(
 ) -> dict:
     """Applicant ids for the UI selector.
 
+    Ordered by sk_id_curr. Without an ORDER BY, Postgres may return any rows
+    for a LIMIT, and the plan it chooses depends on which columns are selected,
+    so this endpoint previously returned a different arbitrary window than a
+    plain scan of the same table. Ordering makes paging and the demo
+    reproducible.
+
+    These applicants are in the training set. The served model is refit on all
+    307,511 rows, so no row of application_train is out-of-sample for it, and a
+    prediction shown here is not evidence of generalisation. Reported metrics
+    come from 5-fold cross-validation and are unaffected. See the README's
+    limitations.
+
     Returns ids and a few descriptive fields, never the full 122-column row.
     """
     frame = read_table(
@@ -79,6 +91,7 @@ def applicants(
             "code_gender",
         ],
         limit=limit + offset,
+        order_by="sk_id_curr",
     ).iloc[offset:]
 
     frame = frame.assign(age_years=(-frame["days_birth"] / 365.25).round(1))
