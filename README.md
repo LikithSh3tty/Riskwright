@@ -143,7 +143,7 @@ The presentation was generated the same way and no longer is; see **Presentation
 
 The `src.ml.train` rows are the only ones a training run produces. Everything from
 `shap_sample_comparison.json` downwards is computed from artifacts already on disk, or from a
-read-only pass over Postgres with the saved model — so none of the fair-lending, sensitivity
+read-only pass over Postgres with the saved model - so none of the fair-lending, sensitivity
 or SHAP work can disturb the model that is served.
 
 Model artifacts are committed, which contradicts a common convention but follows the
@@ -511,7 +511,7 @@ Figures read from `models/threshold_sensitivity.json`.
 | 20:1 | 0.040736 | 46.4% | 21,150 | 3,675 | 56.1% |
 
 **The answer is that a great deal rests on it.** `t_high` moves from 0.0407 to 0.2284 across the
-range — a spread of **2.2 times the shipped threshold itself**. The approval rate swings from
+range - a spread of **2.2 times the shipped threshold itself**. The approval rate swings from
 46% to 95%. Choosing by cost still beats 0.5 at every ratio, so the *method* is robust even
 where the number is not; but the number is not.
 
@@ -527,7 +527,7 @@ Two things follow, and they pull in opposite directions:
   assumption that currently moves half the book.
 - **The threshold is not arbitrary, and the sensitivity does not make it so.** Every ratio in
   the table produces a threshold far below 0.5, and the cost saving against the naive choice is
-  positive throughout — from 6.7% at 3:1 to 56.1% at 20:1. What is uncertain is *where* to put
+  positive throughout - from 6.7% at 3:1 to 56.1% at 20:1. What is uncertain is *where* to put
   the threshold, not *whether* 0.5 is wrong. It is.
 
 **The deployed threshold does not change.** 10:1 remains shipped, `models/threshold.json` is not
@@ -608,10 +608,10 @@ POSTGRES_HOST=localhost python -m src.ml.proxy_detection
 ```
 
 Every one of the 120 features the model receives is scored against each of the five excluded
-attributes, over all 307,511 applicants. The statistic depends on the pair of types — Spearman
+attributes, over all 307,511 applicants. The statistic depends on the pair of types - Spearman
 rho for numeric against numeric, the correlation ratio (eta squared) for numeric against
-categorical, bias-corrected Cramér's V for categorical against categorical — and all three are
-reported on a common 0–1 correlation-like scale so they can be ranked together. Results go to
+categorical, bias-corrected Cramér's V for categorical against categorical - and all three are
+reported on a common 0-1 correlation-like scale so they can be ranked together. Results go to
 `models/proxy_detection.json`.
 
 **The thresholds were fixed in the module before the first run**, because a cutoff chosen after
@@ -639,13 +639,13 @@ strong:
 | `name_income_type` | **0.620** | eta² = 0.385 |
 | `ext_source_1` | **0.600** | rho = 0.600 |
 | `days_employed_anomalous` | **0.600** | rho = 0.600 |
-| `flag_emp_phone` | **0.600** | rho = −0.600 |
+| `flag_emp_phone` | **0.600** | rho = -0.600 |
 | `flag_document_6` | 0.393 | rho = 0.393 |
-| `days_employed` | 0.307 | rho = −0.307 |
-| `days_registration` | 0.295 | rho = −0.295 |
-| `days_id_publish` | 0.264 | rho = −0.264 |
+| `days_employed` | 0.307 | rho = -0.307 |
+| `days_registration` | 0.295 | rho = -0.295 |
+| `days_id_publish` | 0.264 | rho = -0.264 |
 | `name_housing_type` | 0.246 | eta² = 0.060 |
-| `reg_city_not_work_city` | 0.239 | rho = −0.239 |
+| `reg_city_not_work_city` | 0.239 | rho = -0.239 |
 | `ext_source_3` | 0.205 | rho = 0.205 |
 
 `ext_source_1` at 0.600 is the uncomfortable one. It is the third most important feature in the
@@ -673,7 +673,7 @@ method is not enough**: the statistical pass and the counterfactual sweep each c
 other misses, and only running both produced the full picture.
 
 One guess did not survive. `own_car_age` was listed as a likely age carrier and measures
-**0.021** — no material relationship at all.
+**0.021** - no material relationship at all.
 
 Two of the guesses held up. `name_income_type` is a strong age proxy at 0.620, as expected from
 its `Pensioner` value; `occupation_type` is the strongest gender proxy at 0.572. Both carry real
@@ -684,7 +684,7 @@ correlate with here.
 
 **What this pass does not do.** It measures one feature at a time. A model combines 120 of them,
 and features individually below 0.20 can jointly reconstruct an attribute none of them predicts
-alone — which is exactly how `employed_life_ratio` escapes it. Bounding that means fitting a
+alone - which is exactly how `employed_life_ratio` escapes it. Bounding that means fitting a
 model to predict each protected attribute from the whole matrix and reporting its accuracy. That
 is still not done, and it is now the specific remaining gap rather than a general one.
 
@@ -720,8 +720,8 @@ Roughly an **8% relative swing** attributable to age alone, all else equal. Smal
 terms at these probabilities, and not small in kind: it is exactly the effect the exclusion
 was put in place to prevent.
 
-Repeating that sweep across 20,000 real applicants — rewriting `days_birth` to age 35, then to
-age 55, and changing nothing else — shows how the effect is distributed, and confirms the
+Repeating that sweep across 20,000 real applicants - rewriting `days_birth` to age 35, then to
+age 55, and changing nothing else - shows how the effect is distributed, and confirms the
 mechanism:
 
 | Rows | n | Mean swing | Median | Share whose score moved at all | 90th percentile |
@@ -755,9 +755,9 @@ counterfactual above shows it transmitting age cleanly. Association and conducti
 questions, and this is the worked example of the gap between them.
 
 **Why it is documented rather than removed.** Dropping `employed_life_ratio` changes the
-feature set from 120 columns to 119 and requires a retrain. Every figure in this README — ROC-AUC, PR-AUC, the
+feature set from 120 columns to 119 and requires a retrain. Every figure in this README - ROC-AUC, PR-AUC, the
 calibration constant, the cost-optimal threshold, the band boundaries, the SHAP importances,
-the derived rules, the fair-lending delta, and the disparate impact measurement below — is
+the derived rules, the fair-lending delta, and the disparate impact measurement below - is
 computed against the 120-feature artifact that is actually served. Removing the feature would invalidate all of them and leave a README
 describing a model that is not in the container. Measuring and reporting the leak against the
 shipped artifact is the more useful result.
@@ -793,7 +793,7 @@ escalated. Population approval rate is 70.39%. Results are written to
 | M | 105,059 | 0.6321 | 0.0867 | 0.1014 |
 | XNA | 4 | 0.7500 | 0.0663 | 0.0000 |
 
-Four-fifths ratio **0.8528** — passes. Lowest M, highest F.
+Four-fifths ratio **0.8528** - passes. Lowest M, highest F.
 
 **Age band** (derived from `days_birth`)
 
@@ -804,7 +804,7 @@ Four-fifths ratio **0.8528** — passes. Lowest M, highest F.
 | 45-60 | 103,287 | 0.7698 | 0.0612 | 0.0656 |
 | 60+ | 35,301 | 0.8698 | 0.0446 | 0.0492 |
 
-Four-fifths ratio **0.5602 — fails.** Lowest "under 30", highest "60+".
+Four-fifths ratio **0.5602 - fails.** Lowest "under 30", highest "60+".
 
 **`name_family_status`**
 
@@ -817,7 +817,7 @@ Four-fifths ratio **0.5602 — fails.** Lowest "under 30", highest "60+".
 | Unknown | 2 | 1.0000 | 0.0193 | 0.0000 |
 | Widow | 16,088 | 0.8086 | 0.0553 | 0.0582 |
 
-Four-fifths ratio **0.7885 — fails.** Lowest "Civil marriage", highest "Widow".
+Four-fifths ratio **0.7885 - fails.** Lowest "Civil marriage", highest "Widow".
 
 #### What this says, and what it does not
 
@@ -841,15 +841,15 @@ That is precisely the distinction the law draws, and it is why this section stop
 **Approval-rate disparity is not disparate impact in the legal sense.** The four-fifths ratio
 is a screen: it identifies a disparity large enough that someone must go and answer the
 questions that follow. Those questions are whether the practice producing the disparity is
-justified by business necessity — demonstrably predictive of creditworthiness, not merely
-correlated — and whether a less-discriminatory alternative achieving the same legitimate
+justified by business necessity - demonstrably predictive of creditworthiness, not merely
+correlated - and whether a less-discriminatory alternative achieving the same legitimate
 objective exists. That analysis is not performed here, and nothing in this repository performs
 it. A failing ratio here is therefore a flag, not a finding of liability; the passing gender
 ratio is likewise not a certificate of compliance.
 
 Nor is the population an unbiased one to measure on. These are the rows the model was fitted
 on, so the approval rates describe the training population rather than an out-of-sample one,
-and `application_train` contains only accepted applicants — a censored population, as noted
+and `application_train` contains only accepted applicants - a censored population, as noted
 under reject inference below.
 
 ### What a production system would additionally need
@@ -876,7 +876,7 @@ Excluding the attributes is the floor, not the bar:
 
 Three of that list are implemented: the disparate impact screen, the single-feature proxy
 scan, and the reason codes. What they have in common is that each is the half of its problem
-that does not require judgement — counting approval rates, measuring associations, mapping
+that does not require judgement - counting approval rates, measuring associations, mapping
 attributions to reviewed text. The halves that remain are the ones needing a business
 decision, a credit policy, and counsel.
 
@@ -918,7 +918,7 @@ POSTGRES_HOST=localhost python -m src.ml.shap_full
 ```
 
 `compute_global_importance` materialises the whole SHAP matrix at once, which is 2MB at 2,000
-rows and about 295MB at 307,511 — doubled while shap holds both classes, before anything is
+rows and about 295MB at 307,511 - doubled while shap holds both classes, before anything is
 reduced. So `src/ml/shap_full.py` walks the population in 20,000-row chunks and keeps only a
 running sum of absolute SHAP per feature: 120 floats, whatever the row count. Peak memory is set
 by the chunk rather than by the dataset, and the result is exact rather than approximate,
@@ -927,7 +927,7 @@ because a mean is a sum divided by a count.
 **The ranking did not change.** The top 20 features are in the identical order, the largest rank
 move anywhere in that range is zero, and the rank correlation across all 120 features is
 **0.9990**. The largest change in any single value is `organization_type`, from 0.12446 to
-0.13016 — under 0.006.
+0.13016 - under 0.006.
 
 That is a finding, not a null result: **the 2,000-row sample was adequate**, and the limitation
 the README carried was more cautious than it needed to be. Every SHAP figure previously quoted
@@ -984,7 +984,7 @@ Four design decisions carry the weight:
 - **Some features are never disclosed.** `weekday_appr_process_start` has no causal story an
   applicant could act on. The geographic columns would make a notice read as redlining whatever
   the model's reason for using them. The social-circle columns describe other people's conduct,
-  not the applicant's — both were withheld from applicant 100002's notice above, and the
+  not the applicant's - both were withheld from applicant 100002's notice above, and the
   response says so in `diagnostics.withheld_non_disclosable` rather than dropping them
   silently.
 
@@ -1118,7 +1118,7 @@ The breakpoint stays because it costs nothing and starts working if the schema e
 Server-side, keyed by a `session_id` the client sends, held in-process with a one hour TTL and
 a six turn replay window. Deliberately not in client state: if history lived in the UI,
 replacing the frontend would mean reimplementing memory and the API could not answer a
-follow-up on its own. That was not hypothetical — the frontend was in fact replaced, and
+follow-up on its own. That was not hypothetical - the frontend was in fact replaced, and
 memory did not move.
 
 Refusals are replayed too. Without that, the model re-attempts a question it has already
@@ -1191,7 +1191,7 @@ consecutive runs at v4 over the full 44-question set, no prompt changes between 
 
 Mean **38.4/44 (87%)**, range 37-40, standard deviation 1.34. Figures are read from
 `models/chatbot_variance.json`, written by `python -m tests.run_chatbot_variance`. The earlier
-20-question measurement — mean 17.8/20, range 16-19 — is retained in that file under
+20-question measurement - mean 17.8/20, range 16-19 - is retained in that file under
 `prior_history`, because a mean over 44 questions is not comparable to a mean over 20 and
 overwriting it would erase the basis for the figure this README used to quote.
 
@@ -1223,17 +1223,17 @@ than inventing a column and one no schema check can catch.
 Reported rather than fixed. Repairing a reference query after watching the model disagree with
 it is fitting the grader to the outcome, which is what a held-out set exists to prevent.
 
-**H35 — the reference is arguably wrong and the model is arguably right.** "How many applicants
+**H35 - the reference is arguably wrong and the model is arguably right.** "How many applicants
 have at least one active bureau credit?" The reference counts distinct ids in `bureau`, giving
 251,815. The model joins to `application_train` first and gets 217,150. `bureau` contains ids
 that are not applicants in `application_train`, so the model's reading of the word "applicants"
 is the better one. It is scored as a failure regardless.
 
-**H36 — the reference is right and the model ignored the question.** "Excluding the
+**H36 - the reference is right and the model ignored the question.** "Excluding the
 not-applicable codes, which cash loan purpose is most frequent?" The answer is `Repairs`. The
 model returned `XAP`, which *is* the not-applicable code the question told it to exclude. In
 mitigation, nothing in the schema block tells the model that `XAP` and `XNA` are sentinels for
-that column, so it could not know which codes to drop — but it did not ask, either. That is a
+that column, so it could not know which codes to drop - but it did not ask, either. That is a
 fair criticism of the question and a real failure to honour an explicit constraint.
 
 **Two of the 5.6 average failures are therefore attributable to how I wrote the questions, not
@@ -1291,7 +1291,7 @@ that *do* exist is a judgement the model makes, and it does not make it identica
 The expanded set added three more unanswerable shapes and they behave better: a question about
 an unloaded table (H40), one about calendar dates that do not exist in the schema (H41), and a
 subjective question with no defined quantity (H42) were each handled correctly 5/5. What the
-expansion also found is a worse case than H8 — H44, where the data can answer the question
+expansion also found is a worse case than H8 - H44, where the data can answer the question
 asked but not in the causal sense intended, and the model answers anyway 4 times in 5.
 
 Note what the failure is not. In the runs where it answered, it did not invent a column: it
@@ -1438,7 +1438,7 @@ doing that on a small host would also mean putting Kaggle credentials on a
 public box. Seeding from a dump means what is deployed is the *output* of the
 verified loader rather than a second implementation of it. `pg_dump` does not
 carry roles, so the image reprovisions `riskwright_ro` on first boot and checks
-its grants — the SELECT-on-three-tables property is a documented security claim
+its grants - the SELECT-on-three-tables property is a documented security claim
 and had to survive the move.
 
 The Anthropic key is supplied on the host at run time. It is in no image and in
@@ -1458,22 +1458,22 @@ sections above.
 
 2. **Excluding the protected attributes did not exclude the information.** A systematic scan
    of all 120 features found **fifteen** that are a material proxy for an excluded attribute,
-   twelve for age and five of those strongly — `ext_source_1` reconstructs age at 0.600 while
+   twelve for age and five of those strongly - `ext_source_1` reconstructs age at 0.600 while
    being the third most important feature in the model. At the deployed threshold **two of
    three attributes fail the four-fifths screen**: age band at 0.5602 and
    `name_family_status` at 0.7885. That is a screening flag, not a finding of disparate
    impact; the business-necessity analysis the legal test requires is not performed.
 
 3. **The 10:1 cost ratio is an assumption, and it decides the outcome for half the book.**
-   Sweeping 3:1 to 20:1 moves `t_high` from 0.0407 to 0.2284 — 2.2 times the shipped
-   threshold — and only **51.5%** of applicants keep the same risk band across that range.
+   Sweeping 3:1 to 20:1 moves `t_high` from 0.0407 to 0.2284 - 2.2 times the shipped
+   threshold - and only **51.5%** of applicants keep the same risk band across that range.
    Choosing by cost beats a naive 0.5 at every ratio, so the method survives; the number
    needs a real recovery model behind it.
 
 4. **Every applicant shown in the UI is a training row.** The served model is refit on all
    307,511 rows, so no prediction visible in the interface is out-of-sample. The reported
-   metrics are unaffected — they come from 5-fold cross-validation where every scored row was
-   out of fold — but an individual prediction on screen demonstrates the interface, not
+   metrics are unaffected - they come from 5-fold cross-validation where every scored row was
+   out of fold - but an individual prediction on screen demonstrates the interface, not
    generalisation.
 
 5. **The chatbot declines probabilistically, and its held-out set is self-authored.** Over
