@@ -3,7 +3,6 @@ data/*
 !data/.gitkeep
 
 # Internal strategy documents - not for the evaluator
-docs/
 Riskwright_Project_Brief.pdf
 Riskwright_Project_Brief.md
 NeoStats_AI_Use_Case.pdf
