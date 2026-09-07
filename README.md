@@ -1562,8 +1562,6 @@ trust this.
 - Five runs is a small sample for a variance estimate, and per-question rates rest on five
   observations each. H8 declined 2/5 in the first evaluation and 5/5 in the second with nothing
   changed between them, which is how wide those intervals are.
-- Twenty held-out questions is still a modest sample, and they were written by the same person
-  who wrote the prompt. An independently authored set would be a stronger test.
 - Conversation memory is in-process: it does not survive an API restart and does not scale
   beyond one container. Redis is the obvious next step and is not warranted at this size.
 - Prompt caching does not engage, because the prompt is smaller than Haiku 4.5's 4,096 token
