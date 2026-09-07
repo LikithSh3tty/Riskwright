@@ -1,14 +1,51 @@
+<div align="center">
+
 # Riskwright
 
-An AI-powered credit risk platform built on the Home Credit Default Risk dataset. It predicts
-loan default probability, explains every prediction, derives business-readable credit rules,
-and lets a non-technical user query the data in plain English.
+*credit decisions a regulator could read*
 
-Built for the NeoStats AI Engineer assignment.
+**An AI credit risk platform that scores, explains itself, and then audits itself for the
+thing accuracy never catches.**
 
-> **Status:** all six modules complete and verified against a running stack.
+![tests](https://img.shields.io/badge/tests-176%20passing-brightgreen)
+![python](https://img.shields.io/badge/python-3.11-blue)
+![ROC-AUC](https://img.shields.io/badge/ROC--AUC-0.7614-blue)
+![held-out](https://img.shields.io/badge/chatbot-38.4%2F44-orange)
+![docker](https://img.shields.io/badge/docker-3%20images-2496ED)
+![live](https://img.shields.io/badge/live-demo-brightgreen)
+
+[Why it's built this way](#fair-lending) &middot; [See it work](http://159.65.157.86)
+
+</div>
 
 ---
+
+A credit model can be accurate, explainable, well tested, and still illegal to deploy.
+Riskwright predicts default probability on 307,511 Home Credit applications, explains every
+decision with exact SHAP values, turns the model into rules a credit officer can read, and
+answers plain-English questions by writing SQL that is parsed before it runs.
+
+The part worth reading is what happened when it was checked. Five protected attributes are
+excluded from the feature matrix, which is the standard move and is where most projects stop.
+It did not hold. A systematic scan of all 120 features found **fifteen that reconstruct an
+excluded attribute**, twelve of them for age, and `ext_source_1` predicts age at 0.600 while
+being the third most important feature in the model. At the deployed threshold, **two of three
+protected attributes fail the four-fifths screen**. None of that is visible in a ROC-AUC.
+
+```
+applicant -> LightGBM -> calibrate -> band -> SHAP -> reason codes
+             120 feats   exact       cost     exact   ECOA, 4 max
+                         inversion   optimal          fixed wording
+```
+
+**Measured, not asserted.** Every figure in this README is read from `models/*.json` rather
+than typed, because generating them that way caught two hand-written numbers that were wrong.
+The cost ratio behind the threshold is an assumption, so it was swept: it moves the risk band
+for **half the applicants**. The chatbot's refusal rate is a model judgement, so it was run
+five times: **38.4/44**, not the single good run. Where a claim could not be measured, it says
+so.
+
+## See it work - http://159.65.157.86
 
 ## What it does
 
