@@ -33,14 +33,26 @@ services:
       - pgdata:/var/lib/postgresql/data
     # No ports. Nothing outside the compose network talks to the database.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-riskwright} -d ${POSTGRES_DB:-riskwright}"]
-      interval: 5s
-      timeout: 5s
-      # The first boot restores a ~200MB dump before Postgres accepts
-      # connections, so the window here is wider than the repo's. Subsequent
-      # starts skip the restore and are quick.
-      retries: 60
-      start_period: 60s
+      # NOT a bare pg_isready. During initialisation the entrypoint runs a
+      # temporary server on a unix socket, and pg_isready is satisfied by it
+      # while the dump is still restoring -- so a bare readiness probe reports
+      # healthy, depends_on releases the API, and the whole stack comes up
+      # green against a database holding one table out of three. Observed, not
+      # theorised: the first run of this file did exactly that.
+      #
+      # The repository's compose avoids the problem with a loader service and
+      # service_completed_successfully. There is no loader here, so the probe
+      # has to assert the end state itself. Checking the read-only role's
+      # grants covers everything: 20-readonly-role.sh is the last init script,
+      # and it only reaches the GRANTs after the restore has created the
+      # tables they name.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-riskwright} -d ${POSTGRES_DB:-riskwright} && [ \"$$(psql -U ${POSTGRES_USER:-riskwright} -d ${POSTGRES_DB:-riskwright} -tAc \"SELECT count(*) FROM information_schema.table_privileges WHERE grantee='${POSTGRES_RO_USER:-riskwright_ro}' AND privilege_type='SELECT'\")\" = 3 ]"]
+      interval: 10s
+      timeout: 10s
+      # The first boot restores a 137MB gzipped dump -- roughly 3.7M rows --
+      # before this can pass. Subsequent starts skip the restore entirely.
+      retries: 90
+      start_period: 30s
     restart: unless-stopped
 
   api:
