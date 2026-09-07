@@ -1448,125 +1448,40 @@ Host setup, sizing and troubleshooting: **[deploy/README.md](deploy/README.md)**
 
 ## Known limitations
 
-Specific rather than vague, because the vague version is useless to anyone deciding whether to
-trust this.
+Five that matter most, each measured rather than asserted. Fuller detail sits in the
+sections above.
 
-**Model**
+1. **The model uses one of the three loaded tables.** It trains on `application_train`
+   only; `bureau` and `previous_application` are loaded for the chatbot and contribute no
+   features. Published solutions gain roughly 0.02-0.03 ROC-AUC from prior credit history,
+   which makes this the largest single improvement available.
 
-- Trained on `application_train` only. `bureau` and `previous_application` are loaded for the
-  chatbot but contribute no features. Published solutions gain roughly 0.02 to 0.03 ROC-AUC
-  from prior credit history; that is the largest single improvement available.
-- No hyperparameter search. Deliberate, but it means the reported 0.7614 is a floor.
-- Protected attributes are excluded from the model (see **Fair lending** above), at a measured
-  cost of 0.0037 ROC-AUC. **Exclusion did not hold, and the systematic pass says how badly:
-  fifteen features are a material proxy for at least one excluded attribute**, twelve of them
-  for age and five of those strongly. `ext_source_1` reconstructs age at 0.600 and is the third
-  most important feature in the model. Documented rather than removed, because removing any of
-  them requires a retrain and invalidates every figure reported here.
-- **Two of three protected attributes fail the four-fifths screen** at the deployed threshold:
-  age band at 0.5602 and `name_family_status` at 0.7885. `code_gender` passes at 0.8528. That
-  is a screening flag, not a finding of disparate impact — the business-necessity analysis the
-  legal test requires is not performed.
-- Still not done, now specifically rather than generally: the **business-necessity analysis**
-  that would say whether either failing ratio is justified; **multivariate** proxy detection,
-  since the pass above measures one feature at a time and `employed_life_ratio` at 0.074 proves
-  features below the floor can still carry an attribute; a **rule-based adverse action engine**
-  working from the credit policy rather than from SHAP attributions; and **reject inference**.
-  Not deployable without that work.
-- **The 10:1 cost ratio is still an assumption, but a bounded one.** Sweeping 3:1 to 20:1 moves
-  `t_high` from 0.0407 to 0.2284 — 2.2 times the shipped threshold — and the approval rate from
-  46% to 95%. Only 51.5% of applicants keep the same risk band across that range, so the
-  assumption decides the outcome for nearly half the book. Choosing by cost beats 0.5 at every
-  ratio, so the method survives; the number needs a real recovery model. Measured in
-  `models/threshold_sensitivity.json`.
+2. **Excluding the protected attributes did not exclude the information.** A systematic scan
+   of all 120 features found **fifteen** that are a material proxy for an excluded attribute,
+   twelve for age and five of those strongly — `ext_source_1` reconstructs age at 0.600 while
+   being the third most important feature in the model. At the deployed threshold **two of
+   three attributes fail the four-fifths screen**: age band at 0.5602 and
+   `name_family_status` at 0.7885. That is a screening flag, not a finding of disparate
+   impact; the business-necessity analysis the legal test requires is not performed.
 
-**Explainability**
+3. **The 10:1 cost ratio is an assumption, and it decides the outcome for half the book.**
+   Sweeping 3:1 to 20:1 moves `t_high` from 0.0407 to 0.2284 — 2.2 times the shipped
+   threshold — and only **51.5%** of applicants keep the same risk band across that range.
+   Choosing by cost beats a naive 0.5 at every ratio, so the method survives; the number
+   needs a real recovery model behind it.
 
-- Global SHAP importance is now exhaustive: all 307,511 applicants, computed in chunks.
-  The previous 2,000-row sample produced an identical top-20 ordering and a rank
-  correlation of 0.9990 across all 120 features, so the sampling was never distorting
-  anything. Per-prediction SHAP was always exact.
-- SHAP values are in log-odds on the model's weighted scale. The probability is calibrated;
-  the contributions describe direction and relative size, not percentage points.
-- The narrative is template-generated. It is reliable and cheap, and it will not phrase an
-  unusual combination of drivers as fluently as a model would.
+4. **Every applicant shown in the UI is a training row.** The served model is refit on all
+   307,511 rows, so no prediction visible in the interface is out-of-sample. The reported
+   metrics are unaffected — they come from 5-fold cross-validation where every scored row was
+   out of fold — but an individual prediction on screen demonstrates the interface, not
+   generalisation.
 
-**Rules**
-
-- The faithful rule set agrees with the model on 79.8% of applicants, the policy set on 71.4%.
-  Neither is the model, and the gap is where a rule-based decision would differ from a scored
-  one.
-- The faithful set keys almost entirely off external bureau scores, so it says little a credit
-  officer can act on. That is what the policy set exists for.
-
-**Chatbot**
-
-- **Refusal is probabilistic, not guaranteed.** The schema validator makes querying a
-  non-existent column impossible, which is a hard guarantee. Declining a question that is
-  semantically unanswerable from columns that *do* exist is a model judgement: across five
-  runs, held-out question H8 was declined twice and answered wrongly three times. When it
-  answers it uses real columns to compute a real number for a neighbouring question, which
-  no schema check can catch.
-- **Held-out accuracy is a distribution, not a number: mean 38.4/44, range 37-40 over five
-  runs**, against 100% on the development set. The development set was used for tuning and its
-  score is not a generalisation estimate. Thirty-four of forty-four questions are stable at
-  5/5; the eight that move and the two that fail every run are listed under the evaluation
-  section.
-- **Two of the average 5.6 failures are defects in questions I wrote, not model failures.** H35
-  has a contestable reference query and H36 assumes knowledge of sentinel codes the schema
-  block never supplies. They are reported rather than repaired, because fixing a reference
-  after seeing the model disagree is fitting the grader to the outcome. The model-attributable
-  score is nearer 40/44.
-- **Forty-four questions written by the person who wrote the prompt is still the weakest part
-  of this evaluation.** The second batch was written to cover shapes the first lacked, but its
-  author had already seen which of H1-H20 were unstable; that is disclosed at the top of
-  `tests/chatbot_heldout.yaml`. An independently authored set remains the right next step, and
-  the 5% authoring-defect rate found above is the concrete argument for it.
-- Five runs is a small sample for a variance estimate, and per-question rates rest on five
-  observations each. H8 declined 2/5 in the first evaluation and 5/5 in the second with nothing
-  changed between them, which is how wide those intervals are.
-- Twenty held-out questions is still a modest sample, and they were written by the same person
-  who wrote the prompt. An independently authored set would be a stronger test.
-- Conversation memory is in-process: it does not survive an API restart and does not scale
-  beyond one container. Redis is the obvious next step and is not warranted at this size.
-- Prompt caching does not engage, because the prompt is smaller than Haiku 4.5's 4,096 token
-  minimum. Measured, not assumed, and a deliberate trade against prompt compactness.
-- Only three tables are exposed. Questions needing the other four are refused correctly but
-  are refused nonetheless.
-
-**Demonstration versus measurement**
-
-- **Applicants shown in the UI are in the training set.** `full_train` refits both models on
-  all 307,511 rows before saving them, which is the right production choice but means no row
-  of `application_train` is out-of-sample for the served model. The cross-validation folds
-  were a measurement device and are not retained.
-- The reported metrics are unaffected by this. ROC-AUC, PR-AUC, the calibration identity, the
-  cost threshold and the fair-lending delta all come from 5-fold cross-validation, where every
-  scored row was out of fold. What the UI demonstrates is the interface, the SHAP
-  decomposition and the banding, none of which is a performance claim.
-- An individual prediction shown in the UI should therefore not be read as evidence of
-  generalisation. Serving a model deliberately fitted on a subset, purely so the demo could
-  be out-of-sample, would mean the published metrics no longer described the deployed
-  artifact. That is a worse trade than this caveat.
-
-**Engineering**
-
-- Model artifacts are committed to git. This contradicts a common convention but follows the
-  assignment, which lists saved model artifacts as a repository deliverable, and it means a
-  fresh clone can serve predictions without training first.
-- No authentication on the API. Appropriate for an assignment, not for anything else.
-- The 176 tests cover `src/` and the `app/` request/response contracts. **The React UI has
-  no automated coverage** and is verified by hand against a running stack. Nor is anything
-  that needs a live database or a live LLM covered: the API tests mock the data layer, so
-  what is asserted is the contract, not the SQL underneath it. The chatbot is measured by
-  the evaluation harness instead of by pytest, which is a different kind of evidence.
-- The `employed_life_ratio` leak was found by hand, comparing what two frontends exposed,
-  not by a test. That is a fair indication of what hand-verification catches and what it
-  does not. There is now a test pinning the feature as *present*, so it cannot be removed
-  without the documentation moving with it, but nothing would have found it in the first
-  place.
-
----
+5. **The chatbot declines probabilistically, and its held-out set is self-authored.** Over
+   five runs the held-out score averages **38.4/44** (range 37-40), and refusal is a model
+   judgement rather than a guarantee: the one question designed to test it was declined 7
+   times in 10. Two of the average failures are defects in questions the author wrote, not
+   model failures. An independently authored set is the honest next step. Separately, the 176
+   tests cover `src/` and the `app/` contracts; the React UI has no automated coverage.
 
 ## Tests
 
