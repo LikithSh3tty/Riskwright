@@ -200,7 +200,7 @@ The dataset is never committed to git.
 `configs/columns_description.csv` is the competition's own data dictionary: 37KB, 219 rows,
 one row per *column definition* across the seven tables, with the fields `Table`, `Row`,
 `Description` and `Special`. It contains no applicant records. It is committed because the
-chatbot's schema context reads it &mdash; sending the model a real definition is what stops it
+chatbot's schema context reads it - sending the model a real definition is what stops it
 reading `days_birth` as a date. Removing it is not cosmetic: the schema block loses every
 column description, drops below its documented token floor, and three tests in
 `test_schema_context.py` fail. The submission instruction not to place the dataset in git is
