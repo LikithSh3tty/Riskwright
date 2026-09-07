@@ -1405,18 +1405,21 @@ database seeded from a local run of the same loader. The images are built and
 pushed from this commit, so a hosted instance runs exactly what the repository
 describes.
 
-> **Status:** the images are published and the stack is verified end to end
-> against them; no public instance is running yet, so the URL below is a
-> placeholder. `deploy/README.md` is the host procedure.
+**Live: [http://159.65.157.86](http://159.65.157.86)**
 
-**Live:** `http://<pending>`
+A DigitalOcean droplet in Bangalore (2 vCPU, 4GB, Ubuntu 24.04) running the
+three published images, provisioned and deployed by the procedure in
+[deploy/README.md](deploy/README.md).
 
-Verified by running `deploy/docker-compose.deploy.yml` against the published
-images from a clean volume: all three containers healthy, 307,511 / 1,716,428 /
-1,670,214 rows restored, `riskwright_ro` holding three SELECT grants and refused
-on INSERT, UPDATE, DELETE, CREATE and DROP, all sixteen endpoints answering
-through the nginx proxy, all five UI sections loading with no console errors,
-and ports 8000 and 5432 unreachable from the host.
+Verified against that host rather than assumed: all three containers healthy,
+**307,511 / 1,716,428 / 1,670,214** rows restored across the three tables,
+`riskwright_ro` holding exactly three SELECT grants and refused on INSERT,
+UPDATE, DELETE, CREATE and DROP, fifteen endpoints answering through the nginx
+`/api/` proxy, a live chatbot question returning 8.07% from generated SQL
+against the deployed database, all five UI sections driven in Chrome with no
+console errors and no 4xx/5xx, none of the sixty served files containing a key
+or a `VITE_` variable, and **ports 8000 and 5432 closed from the public
+internet** while 80 is open.
 
 | Image | Contents |
 |-------|----------|
